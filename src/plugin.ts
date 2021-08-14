@@ -1,87 +1,38 @@
-import { App, Modal, Notice, Plugin } from 'obsidian';
+import { Plugin } from 'obsidian';
+import { Subject } from 'rxjs';
+import { TrelloAPI } from './api';
+import { DEFAULT_DATA } from './constants';
+import { PluginData } from './interfaces';
 
-import { SampleSettingTab } from './settings';
+import { TrelloSettings } from './settings';
+import { PluginState } from './state';
 
-interface MyPluginSettings {
-  mySetting: string;
-}
-
-const DEFAULT_SETTINGS: MyPluginSettings = {
-  mySetting: 'default'
-};
-
-export class MyPlugin extends Plugin {
-  settings: MyPluginSettings;
+export class TrelloPlugin extends Plugin {
+  api!: TrelloAPI;
+  state!: PluginState;
+  destroy = new Subject<void>();
 
   async onload() {
-    console.log('loading plugin');
+    const savedData: PluginData | undefined = await this.loadData();
+    this.state = new PluginState(this, savedData || DEFAULT_DATA);
+    this.api = new TrelloAPI(this);
 
-    await this.loadSettings();
-
-    this.addRibbonIcon('dice', 'Sample Plugin', () => {
-      new Notice('This is a notice!');
-    });
-
-    this.addStatusBarItem().setText('Status Bar Text');
+    // Add settings
+    this.addSettingTab(new TrelloSettings(this.app, this));
 
     this.addCommand({
-      id: 'open-sample-modal',
-      name: 'Open Sample Modal',
-      // callback: () => {
-      // 	console.log('Simple Callback');
-      // },
-      checkCallback: (checking: boolean) => {
-        let leaf = this.app.workspace.activeLeaf;
-        if (leaf) {
-          if (!checking) {
-            new SampleModal(this.app).open();
-          }
-          return true;
-        }
-        return false;
+      id: 'trello-list-boards',
+      name: 'List trello boards',
+      callback: () => {
+        this.api.getBoards().subscribe((resp) => {
+          console.log(resp.response);
+        });
       }
     });
-
-    this.addSettingTab(new SampleSettingTab(this.app, this));
-
-    this.registerCodeMirror((cm: CodeMirror.Editor) => {
-      console.log('codemirror', cm);
-    });
-
-    this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-      console.log('click', evt);
-    });
-
-    this.registerInterval(
-      window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000)
-    );
   }
 
   onunload() {
-    console.log('unloading plugin');
-  }
-
-  async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-  }
-
-  async saveSettings() {
-    await this.saveData(this.settings);
-  }
-}
-
-class SampleModal extends Modal {
-  constructor(app: App) {
-    super(app);
-  }
-
-  onOpen() {
-    let { contentEl } = this;
-    contentEl.setText('Woah!');
-  }
-
-  onClose() {
-    let { contentEl } = this;
-    contentEl.empty();
+    this.destroy.next();
+    this.destroy.complete();
   }
 }

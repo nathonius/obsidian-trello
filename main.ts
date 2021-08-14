@@ -1,3 +1,3 @@
-import { MyPlugin } from "./src/plugin";
+import { TrelloPlugin } from './src/plugin';
 
-export default MyPlugin;
+export default TrelloPlugin;

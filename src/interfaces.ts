@@ -1,3 +1,7 @@
-export interface TrelloPluginSettings {
+export interface PluginData {
+  settings: PluginSettings;
+}
+
+export interface PluginSettings {
   token: string;
 }
