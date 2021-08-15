@@ -12,6 +12,7 @@ export class TrelloSettings extends PluginSettingTab {
     super(app, plugin);
   }
 
+  // TODO: Handle no token
   async display(): Promise<void> {
     // Prepare container
     this.containerEl.empty();
