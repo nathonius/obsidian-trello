@@ -1,7 +1,8 @@
-import { BehaviorSubject } from 'rxjs';
-import { ajax } from 'rxjs/ajax';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { ajax, AjaxResponse } from 'rxjs/ajax';
 import { map, takeUntil } from 'rxjs/operators';
 import { TRELLO_API, TRELLO_API_KEY } from './constants';
+import { TrelloBoard } from './interfaces';
 import { TrelloPlugin } from './plugin';
 
 export class TrelloAPI {
@@ -16,7 +17,7 @@ export class TrelloAPI {
       .subscribe(this.token);
   }
 
-  getBoards() {
+  getBoards(): Observable<AjaxResponse<TrelloBoard[]>> {
     const url = `${TRELLO_API}/1/members/me/boards?fields=name,url&key=${TRELLO_API_KEY}&token=${this.token.value}`;
     return ajax<any>({ url, crossDomain: true });
   }
