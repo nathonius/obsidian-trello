@@ -11,3 +11,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 export const DEFAULT_DATA: PluginData = {
   settings: DEFAULT_SETTINGS
 };
+
+export enum MetaKey {
+  Card = 'trello_card_id',
+  Board = 'trello_board_id'
+}

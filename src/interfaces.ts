@@ -12,6 +12,11 @@ export interface PluginSettings {
 
 // 3rd Party
 export interface MetaEditApi {
+  createYamlProperty: (
+    propertyName: string,
+    propertyValue: string,
+    file: TFile | string
+  ) => Promise<void>;
   update: (
     propertyName: string,
     propertyValue: string,
@@ -20,7 +25,7 @@ export interface MetaEditApi {
   getPropertyValue: (
     propertyName: string,
     file: TFile | string
-  ) => Promise<void>;
+  ) => Promise<string | undefined>;
 }
 
 // Trello DTO
