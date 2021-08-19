@@ -167,8 +167,11 @@ export interface TrelloUser {
 export interface TrelloBoard {
   id: string;
   name: string;
+  desc: string;
+  closed: boolean;
   url: string;
   shortLink: string;
+  labelNames: Record<TrelloLabelColor, string>;
 }
 
 export interface TrelloList {
@@ -181,20 +184,34 @@ export interface TrelloList {
   // subscribed: boolean;
 }
 
+export interface TrelloLabel {
+  id: string;
+  idBoard: string;
+  name: string;
+  color: TrelloLabelColor;
+}
+
 export interface TrelloCard {
   id: string;
-  // "checkItemStates": null,
+  checkItemStates:
+    | null
+    | [
+        {
+          idCheckItem: string;
+          state: TrelloCheckItemState;
+        }
+      ];
   // "closed": boolean,
   dateLastActivity: string;
   desc: string;
   // "descData": null,
-  // "dueReminder": null,
+  dueReminder: null | number;
   idBoard: string;
-  // "idList": string,
+  idList: string;
   // "idMembersVoted": string[],
   idShort: number;
-  // "idAttachmentCover": null,
-  // "idLabels": string[],
+  idAttachmentCover: null | string;
+  idLabels: string[];
   // "manualCoverAttachment": false,
   name: string;
   // "pos": number,
@@ -202,11 +219,11 @@ export interface TrelloCard {
   // "isTemplate": boolean,
   // "cardRole": null,
   // "badges": Object,
-  // "dueComplete": boolean,
-  // "due": null,
-  // "idChecklists": string[],
+  dueComplete: boolean;
+  due: null | string; // Date
+  idChecklists: string[];
   // "idMembers": string[],
-  // "labels": any[],
+  labels: TrelloLabel[];
   // "shortUrl": string,
   // "start": null,
   // "subscribed": boolean,
@@ -216,6 +233,24 @@ export interface TrelloCard {
 
 export enum TrelloActionType {
   Comment = 'commentCard'
+}
+
+export enum TrelloCheckItemState {
+  Complete = 'complete',
+  Incomplete = 'incomplete'
+}
+
+export enum TrelloLabelColor {
+  Green = 'green',
+  Yellow = 'yellow',
+  Orange = 'orange',
+  Red = 'red',
+  Purple = 'purple',
+  Blue = 'blue',
+  Sky = 'sky',
+  Lime = 'lime',
+  Pink = 'pink',
+  Black = 'black'
 }
 
 export interface TrelloAction {
