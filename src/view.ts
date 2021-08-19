@@ -1,8 +1,7 @@
 import { ItemView, Notice, WorkspaceLeaf } from 'obsidian';
-import { concat, forkJoin, Observable, of, Subject } from 'rxjs';
-import { concatMap, switchMap, takeUntil, tap } from 'rxjs/operators';
+import { combineLatest, forkJoin, of, Subject } from 'rxjs';
+import { switchMap, takeUntil, tap } from 'rxjs/operators';
 import { TRELLO_VIEW_TYPE } from './constants';
-import { TrelloCard } from './interfaces';
 import { TrelloPlugin } from './plugin';
 
 /**
@@ -14,12 +13,13 @@ import { TrelloPlugin } from './plugin';
 
 export class TrelloView extends ItemView {
   private readonly destroy = new Subject<void>();
+  private readonly update = new Subject<void>();
   constructor(private readonly plugin: TrelloPlugin, leaf: WorkspaceLeaf) {
     super(leaf);
-    this.plugin.currentCard
+    combineLatest([this.plugin.currentCard, this.update])
       .pipe(
         takeUntil(this.destroy),
-        switchMap((card) =>
+        switchMap(([card, _]) =>
           forkJoin([
             of(card),
             card ? this.plugin.api.getActionsFromCard(card.id) : of(null)
@@ -63,11 +63,14 @@ export class TrelloView extends ItemView {
                 })
               )
               .subscribe(() => {
+                delete this.plugin.cardActionsCache[card.id];
+                this.update.next();
                 new Notice('Added comment.');
               });
           }
         });
       });
+    this.update.next();
   }
 
   getDisplayText(): string {
