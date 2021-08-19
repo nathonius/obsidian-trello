@@ -1,4 +1,4 @@
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, of } from 'rxjs';
 import { ajax, AjaxResponse } from 'rxjs/ajax';
 import { map, takeUntil, tap } from 'rxjs/operators';
 import { TRELLO_API, TRELLO_API_KEY } from './constants';
@@ -24,13 +24,32 @@ export class TrelloAPI {
 
   getCardFromBoard(
     boardId: string,
+    cardId: string,
+    bypassCache = false,
+    cacheExpireMs = 60000 // 1 minute
+  ): Observable<TrelloCard> {
+    const cached = this.plugin.cardCache[cardId];
+    const now = new Date();
+    if (
+      !cached ||
+      bypassCache ||
+      now.getTime() - cached.timestamp.getTime() > cacheExpireMs
+    ) {
+      return this._getCardFromBoard(boardId, cardId);
+    }
+    return of(cached.card);
+  }
+
+  private _getCardFromBoard(
+    boardId: string,
     cardId: string
-  ): Observable<AjaxResponse<TrelloCard>> {
+  ): Observable<TrelloCard> {
     const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/cards/${cardId}`);
     return ajax<TrelloCard>({ url, crossDomain: true }).pipe(
-      tap((resp) => {
-        this.plugin.cardCache[resp.response.id] = {
-          card: resp.response,
+      map((resp) => resp.response),
+      tap((card) => {
+        this.plugin.cardCache[card.id] = {
+          card,
           timestamp: new Date()
         };
       })
