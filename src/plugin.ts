@@ -8,10 +8,15 @@ import {
   pipe,
   Subject
 } from 'rxjs';
-import { take, map, concatMap, concatMapTo, delay } from 'rxjs/operators';
+import { take, map, concatMap, tap } from 'rxjs/operators';
 import { TrelloAPI } from './api';
 import { DEFAULT_DATA, MetaKey, TRELLO_VIEW_TYPE } from './constants';
-import { MetaEditApi, PluginData, TrelloCard } from './interfaces';
+import {
+  MetaEditApi,
+  PluginData,
+  TrelloAction,
+  TrelloCard
+} from './interfaces';
 
 import { TrelloSettings } from './settings';
 import { PluginState } from './state';
@@ -27,6 +32,10 @@ export class TrelloPlugin extends Plugin {
   readonly cardSuggestModal = new CardSuggestModal(this.app);
   readonly cardCache: Record<string, { card: TrelloCard; timestamp: Date }> =
     {};
+  readonly cardActionsCache: Record<
+    string,
+    { actions: TrelloAction[]; timestamp: Date }
+  > = {};
   readonly currentCard = new BehaviorSubject<TrelloCard | null>(null);
 
   // TODO: Handle no token
@@ -64,18 +73,6 @@ export class TrelloPlugin extends Plugin {
       });
     });
 
-    this.addCommand({
-      id: 'trello-plugin-leaf-test',
-      name: 'Trello Leaf Test',
-      callback: () => {
-        let leaves = this.app.workspace.getLeavesOfType(TRELLO_VIEW_TYPE);
-        if (leaves.length === 0) {
-          const rightLeaf = this.app.workspace.getRightLeaf(false);
-          rightLeaf.setViewState({ type: TRELLO_VIEW_TYPE, active: true });
-        }
-      }
-    });
-
     // Add settings
     this.addSettingTab(new TrelloSettings(this.app, this));
 
@@ -104,6 +101,9 @@ export class TrelloPlugin extends Plugin {
                 return this.cardSuggestModal.selectedCard;
               }),
               take(1),
+              tap((selected) => {
+                this.currentCard.next(selected);
+              }),
               concatMap((selected) =>
                 this.updateOrCreateMeta(
                   MetaKey.BoardCard,

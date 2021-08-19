@@ -2,7 +2,12 @@ import { BehaviorSubject, Observable, of } from 'rxjs';
 import { ajax, AjaxResponse } from 'rxjs/ajax';
 import { map, takeUntil, tap } from 'rxjs/operators';
 import { TRELLO_API, TRELLO_API_KEY } from './constants';
-import { TrelloBoard, TrelloCard } from './interfaces';
+import {
+  TrelloAction,
+  TrelloActionType,
+  TrelloBoard,
+  TrelloCard
+} from './interfaces';
 import { TrelloPlugin } from './plugin';
 
 export class TrelloAPI {
@@ -66,6 +71,48 @@ export class TrelloAPI {
         });
       })
     );
+  }
+
+  getActionsFromCard(
+    cardId: string,
+    actionTypes: string[] = [TrelloActionType.Comment],
+    bypassCache = false,
+    cacheExpireMs = 60000
+  ): Observable<TrelloAction[]> {
+    const cached = this.plugin.cardActionsCache[cardId];
+    const now = new Date();
+    if (
+      !cached ||
+      bypassCache ||
+      now.getTime() - cached.timestamp.getTime() > cacheExpireMs
+    ) {
+      return this._getActionsFromCard(cardId, actionTypes).pipe(
+        map((resp) => resp.response)
+      );
+    }
+    return of(cached.actions);
+  }
+
+  private _getActionsFromCard(
+    cardId: string,
+    actionTypes: string[] = [TrelloActionType.Comment]
+  ): Observable<AjaxResponse<TrelloAction[]>> {
+    const url = this.auth(
+      `${TRELLO_API}/1/cards/${cardId}/actions?filter=${actionTypes.join(',')}`
+    );
+    return ajax<TrelloAction[]>({ url, crossDomain: true });
+  }
+
+  addCommentToCard(
+    cardId: string,
+    content: string
+  ): Observable<AjaxResponse<TrelloAction>> {
+    const url = this.auth(
+      `${TRELLO_API}/1/cards/${cardId}/actions/comments?text=${encodeURIComponent(
+        content
+      )}`
+    );
+    return ajax<TrelloAction>({ url, method: 'POST', crossDomain: true });
   }
 
   private auth(url: string): string {
