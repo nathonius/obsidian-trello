@@ -8,6 +8,12 @@ export interface PluginData {
 export interface PluginSettings {
   token: string;
   selectedBoards: TrelloBoard[];
+  openToSide: LeafSide;
+}
+
+export enum LeafSide {
+  Left = 'left',
+  Right = 'right'
 }
 
 // 3rd Party
@@ -26,6 +32,7 @@ export interface MetaEditApi {
     propertyName: string,
     file: TFile | string
   ) => Promise<string | undefined>;
+  deleteProperty: (propertyName: string, file: TFile | null) => Promise<void>;
 }
 
 // Trello DTO

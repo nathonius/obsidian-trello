@@ -18,6 +18,8 @@
     "obsidian": "^0.12.0",
     "prettier": "^2.3.2",
     "rollup": "^2.32.1",
+    "rollup-plugin-scss": "^3.0.0",
+    "sass": "^1.38.0",
     "tslib": "^2.2.0",
     "typescript": "^4.2.4"
   },

@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import { map, take } from 'rxjs/operators';
+import { LeafSide, PluginSettings } from 'src/interfaces';
 import { TrelloPlugin } from '../plugin';
 import { BoardSelectModal } from './board-select-modal';
 
@@ -19,27 +20,26 @@ export class TrelloSettings extends PluginSettingTab {
     this.containerEl.createEl('h2', { text: 'Obsidian Trello settings.' });
 
     // Build settings
-    await this.buildTokenSetting(this.containerEl);
-    await this.buildBoardSelectSetting(this.containerEl);
+    this.plugin.state.settings.pipe(take(1)).subscribe((settings) => {
+      this.buildTokenSetting(this.containerEl, settings);
+      this.buildBoardSelectSetting(this.containerEl);
+      this.buildOpenToSideSetting(this.containerEl, settings);
+    });
   }
 
-  private async buildTokenSetting(containerEl: HTMLElement): Promise<void> {
-    this.plugin.state.settings
-      .pipe(
-        take(1),
-        map((settings) => settings.token)
-      )
-      .subscribe((token) => {
-        new Setting(containerEl)
-          .setName('Trello Token')
-          .setDesc('Your API token.')
-          .addText((text) => {
-            text
-              .setPlaceholder('Enter token')
-              .setValue(token)
-              .onChange(async (value: string) => {
-                await this.plugin.state.updateSetting('token', value);
-              });
+  private async buildTokenSetting(
+    containerEl: HTMLElement,
+    settings: PluginSettings
+  ): Promise<void> {
+    new Setting(containerEl)
+      .setName('Trello Token')
+      .setDesc('Your API token.')
+      .addText((text) => {
+        text
+          .setPlaceholder('Enter token')
+          .setValue(settings.token)
+          .onChange(async (value: string) => {
+            await this.plugin.state.updateSetting('token', value);
           });
       });
   }
@@ -52,6 +52,27 @@ export class TrelloSettings extends PluginSettingTab {
         button.setButtonText('Select').onClick(() => {
           this.boardSelectModal.open();
         });
+      });
+  }
+
+  private buildOpenToSideSetting(
+    containerEl: HTMLElement,
+    settings: PluginSettings
+  ): void {
+    new Setting(containerEl)
+      .setName('Open to Side')
+      .setDesc('Whether the Trello pane should open to the left or right side.')
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption(LeafSide.Right, 'Right')
+          .addOption(LeafSide.Left, 'Left')
+          .setValue(settings.openToSide)
+          .onChange(async (value) => {
+            await this.plugin.state.updateSetting(
+              'openToSide',
+              value as LeafSide
+            );
+          });
       });
   }
 }
