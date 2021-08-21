@@ -89,6 +89,12 @@ export class TrelloView extends ItemView {
     const pane = this.renderPaneContainer();
     const cardInfo = pane.createDiv('trello-pane--card-info');
     this.renderCardInfo(card, cardInfo);
+    if (card.labels && card.labels.length > 0) {
+      const labelSectionContainer = pane.createDiv(
+        'trello-pane--labels-section'
+      );
+      // TODO: Render labels
+    }
     const commentSectionContainer = pane.createDiv(
       'trello-pane--comment-section'
     );
@@ -112,7 +118,6 @@ export class TrelloView extends ItemView {
 
   private renderCardInfo(card: TrelloCard, parent: HTMLElement): void {
     parent.createEl('h3', { text: card.name });
-    parent.createEl('span', { text: card.dateLastActivity });
     parent.createEl('span', { text: card.desc });
   }
 
@@ -121,11 +126,22 @@ export class TrelloView extends ItemView {
     comments: TrelloAction[] | null,
     parent: HTMLElement
   ): void {
-    const inputContainer = parent.createDiv('trello-comment-input-container');
-    const input = inputContainer.createEl('input', {
-      attr: { type: 'text' }
+    const container = parent.createDiv('trello-comment-input--container');
+
+    // Small hack for auto-resizing textarea
+    // See: https://css-tricks.com/the-cleanest-trick-for-autogrowing-textareas/
+    const inputContainer = container.createDiv({
+      cls: 'trello-comment-input--input-container'
     });
-    const button = inputContainer.createEl('button', {
+    const input = inputContainer.createEl('textarea', {
+      cls: 'trello-comment-input--input',
+      attr: {
+        onInput: 'this.parentNode.dataset.replicatedValue = this.value',
+        placeholder: 'Write a comment...'
+      }
+    });
+    const button = container.createEl('button', {
+      cls: 'trello-comment-input--submit',
       text: 'Submit',
       attr: { type: 'button' }
     });
