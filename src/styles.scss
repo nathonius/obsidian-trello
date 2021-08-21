@@ -3,3 +3,46 @@
     padding: 0;
   }
 }
+
+.trello-pane {
+  &--container {
+    padding: 0 4px;
+    display: flex;
+    flex-direction: column;
+  }
+  &--card-info {
+    h3 {
+      margin: 0;
+    }
+  }
+  &--comment-section {
+    h4 {
+      margin: 0;
+    }
+  }
+}
+
+.trello-comment {
+  &--container {
+    margin: 8px 0;
+  }
+  &--creator {
+    font-size: 14px;
+    font-weight: bold;
+  }
+  &--date {
+    margin-left: 4px;
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+  &--text-container {
+    padding: 8px;
+    background-color: var(--background-primary);
+    border-radius: 3px;
+    box-shadow: 0 1px 2px -1px #091e4240, 0 0 0 1px #091e4214;
+  }
+  &--text {
+    margin: 0;
+    font-size: 14px;
+  }
+}

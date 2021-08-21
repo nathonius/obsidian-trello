@@ -65,9 +65,14 @@ export class TrelloView extends ItemView {
     this.destroy.complete();
   }
 
+  private renderPaneContainer(): HTMLDivElement {
+    return this.contentEl.createDiv('trello-pane--container');
+  }
+
   private renderEmptyView() {
-    this.contentEl.createEl('h2', { text: 'No Trello card connected.' });
-    const connectButton = this.contentEl.createEl('button', {
+    const pane = this.renderPaneContainer();
+    pane.createEl('h2', { text: 'No Trello card connected.' });
+    const connectButton = pane.createEl('button', {
       text: 'Connect Trello Card',
       attr: { type: 'button' }
     });
@@ -81,12 +86,17 @@ export class TrelloView extends ItemView {
     actions: TrelloAction[] | null
   ): void {
     this.renderHeader(this.contentEl);
-    this.renderCardInfo(card, this.contentEl);
-    this.renderCommentSection(card, actions, this.contentEl);
+    const pane = this.renderPaneContainer();
+    const cardInfo = pane.createDiv('trello-pane--card-info');
+    this.renderCardInfo(card, cardInfo);
+    const commentSectionContainer = pane.createDiv(
+      'trello-pane--comment-section'
+    );
+    this.renderCommentSection(card, actions, commentSectionContainer);
   }
 
-  private renderHeader(container: HTMLElement): void {
-    const header = container.createDiv('nav-header');
+  private renderHeader(parent: HTMLElement): void {
+    const header = parent.createDiv('nav-header');
     const buttons = header.createDiv('nav-buttons-container');
     this.renderNavButton(buttons, 'Refresh card', 'reset', () => {
       this.bypassCache = true;
@@ -100,26 +110,18 @@ export class TrelloView extends ItemView {
     });
   }
 
-  private renderCardInfo(card: TrelloCard, container: HTMLElement): void {
-    container.createEl('h2', { text: card.name });
-    container.createEl('span', { text: card.dateLastActivity });
-    container.createEl('span', { text: card.desc });
+  private renderCardInfo(card: TrelloCard, parent: HTMLElement): void {
+    parent.createEl('h3', { text: card.name });
+    parent.createEl('span', { text: card.dateLastActivity });
+    parent.createEl('span', { text: card.desc });
   }
 
   private renderCommentSection(
     card: TrelloCard,
     comments: TrelloAction[] | null,
-    container: HTMLElement
+    parent: HTMLElement
   ): void {
-    container.createEl('h3', { text: 'Comments' });
-    if (comments && comments.length !== 0) {
-      comments.forEach((a) => {
-        this.renderComment(a, container);
-      });
-    }
-    const inputContainer = container.createDiv(
-      'trello-comment-input-container'
-    );
+    const inputContainer = parent.createDiv('trello-comment-input-container');
     const input = inputContainer.createEl('input', {
       attr: { type: 'text' }
     });
@@ -143,20 +145,42 @@ export class TrelloView extends ItemView {
           });
       }
     });
+    if (comments && comments.length !== 0) {
+      comments.forEach((a) => {
+        this.renderComment(a, parent);
+      });
+    }
   }
 
-  private renderComment(comment: TrelloAction, container: HTMLElement): void {
-    const commentContainer = container.createDiv('trello-comment');
-    commentContainer.createEl('p', { text: comment.data.text });
+  private renderComment(comment: TrelloAction, parent: HTMLElement): void {
+    const commentContainer = parent.createDiv('trello-comment--container');
+    const commentMetadata = commentContainer.createDiv(
+      'trello-comment--metadata'
+    );
+    commentMetadata.createSpan({
+      text: comment.memberCreator.fullName,
+      cls: 'trello-comment--creator'
+    });
+    commentMetadata.createSpan({
+      text: new Date(comment.date).toLocaleString(),
+      cls: 'trello-comment--date'
+    });
+    const textContainer = commentContainer.createDiv(
+      'trello-comment--text-container'
+    );
+    textContainer.createEl('p', {
+      text: comment.data.text,
+      cls: 'trello-comment--text'
+    });
   }
 
   private renderNavButton(
-    container: HTMLElement,
+    parent: HTMLElement,
     label: string,
     icon: string,
     callback: () => any
   ) {
-    const button = container.createDiv({
+    const button = parent.createDiv({
       cls: 'nav-action-button',
       attr: { 'aria-label': label }
     });
