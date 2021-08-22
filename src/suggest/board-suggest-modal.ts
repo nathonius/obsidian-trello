@@ -12,9 +12,7 @@ export class BoardSuggestModal extends SuggestModal<TrelloBoard> {
 
   getSuggestions(query: string): TrelloBoard[] {
     const term = query.toLowerCase();
-    return this.boards.filter((board) =>
-      board.name.toLowerCase().includes(term)
-    );
+    return this.boards.filter((board) => board.name.toLowerCase().includes(term));
   }
 
   renderSuggestion(value: TrelloBoard, el: HTMLElement): void {

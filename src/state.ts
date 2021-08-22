@@ -19,10 +19,7 @@ export class PluginState {
     return this.data.pipe(map((data) => data.settings));
   }
 
-  updateSetting<K extends keyof PluginSettings>(
-    key: K,
-    value: PluginSettings[K]
-  ): void {
+  updateSetting<K extends keyof PluginSettings>(key: K, value: PluginSettings[K]): void {
     const newSettings = { ...this.data.value.settings };
     newSettings[key] = value;
     this.data.next({ ...this.data.value, settings: newSettings });

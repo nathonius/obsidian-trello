@@ -3,6 +3,7 @@ import { TFile } from 'obsidian';
 // Plugin
 export interface PluginData {
   settings: PluginSettings;
+  version: string;
 }
 
 export interface PluginSettings {
@@ -20,20 +21,9 @@ export type TrelloItemCache<T> = Record<string, { item: T; timestamp: Date }>;
 
 // 3rd Party
 export interface MetaEditApi {
-  createYamlProperty: (
-    propertyName: string,
-    propertyValue: string,
-    file: TFile | string
-  ) => Promise<void>;
-  update: (
-    propertyName: string,
-    propertyValue: string,
-    file: TFile | string
-  ) => Promise<void>;
-  getPropertyValue: (
-    propertyName: string,
-    file: TFile | string
-  ) => Promise<string | undefined>;
+  createYamlProperty: (propertyName: string, propertyValue: string, file: TFile | string) => Promise<void>;
+  update: (propertyName: string, propertyValue: string, file: TFile | string) => Promise<void>;
+  getPropertyValue: (propertyName: string, file: TFile | string) => Promise<string | undefined>;
   deleteProperty: (propertyName: string, file: TFile | null) => Promise<void>;
 }
 
@@ -288,10 +278,7 @@ export interface TrelloAction {
   //         }
   //     }
   // },
-  memberCreator: Pick<
-    TrelloUser,
-    'id' | 'avatarHash' | 'avatarUrl' | 'fullName' | 'initials' | 'username'
-  >;
+  memberCreator: Pick<TrelloUser, 'id' | 'avatarHash' | 'avatarUrl' | 'fullName' | 'initials' | 'username'>;
   // memberCreator: {
   //   id: '5318b0c4192711f669efd793';
   //   activityBlocked: false;

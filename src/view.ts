@@ -5,24 +5,13 @@ import { CUSTOM_ICONS, TRELLO_VIEW_TYPE } from './constants';
 import { TrelloAction, TrelloCard, TrelloList } from './interfaces';
 import { TrelloPlugin } from './plugin';
 
-/**
- * TODO:
- * - Add empty state w/ button to connect trello card
- *  - Should just call the command ideally.
- *  - Maybe if no token is set, show button to do that instead
- */
-
 export class TrelloView extends ItemView {
   private bypassCache = false;
   private readonly destroy = new Subject<void>();
   private readonly update = new Subject<void>();
   constructor(private readonly plugin: TrelloPlugin, leaf: WorkspaceLeaf) {
     super(leaf);
-    combineLatest([
-      this.plugin.state.settings,
-      this.plugin.currentCard,
-      this.update
-    ])
+    combineLatest([this.plugin.state.settings, this.plugin.currentCard, this.update])
       .pipe(
         takeUntil(this.destroy),
         switchMap(([settings, card, _]) =>
@@ -32,15 +21,9 @@ export class TrelloView extends ItemView {
               ? this.plugin.api.getCardFromBoard(card.idBoard, card.id, true)
               : of(card),
             card && settings.token
-              ? this.plugin.api.getActionsFromCard(
-                  card.id,
-                  undefined,
-                  this.bypassCache
-                )
+              ? this.plugin.api.getActionsFromCard(card.id, undefined, this.bypassCache)
               : of(null),
-            card && settings.token
-              ? this.plugin.api.getList(card.idList)
-              : of(null)
+            card && settings.token ? this.plugin.api.getList(card.idList) : of(null)
           ])
         ),
 
@@ -105,24 +88,16 @@ export class TrelloView extends ItemView {
     }
   }
 
-  private renderConnectedView(
-    card: TrelloCard,
-    actions: TrelloAction[] | null,
-    list: TrelloList | null
-  ): void {
+  private renderConnectedView(card: TrelloCard, actions: TrelloAction[] | null, list: TrelloList | null): void {
     this.renderHeader(this.contentEl);
     const pane = this.renderPaneContainer();
     const cardInfo = pane.createDiv('trello-pane--card-info');
     this.renderCardInfo(card, list, cardInfo);
     if (card.labels && card.labels.length > 0) {
-      const labelSectionContainer = pane.createDiv(
-        'trello-pane--label-section'
-      );
+      const labelSectionContainer = pane.createDiv('trello-pane--label-section');
       this.renderLabels(card, labelSectionContainer);
     }
-    const commentSectionContainer = pane.createDiv(
-      'trello-pane--comment-section'
-    );
+    const commentSectionContainer = pane.createDiv('trello-pane--comment-section');
     this.renderCommentSection(card, actions, commentSectionContainer);
   }
 
@@ -141,11 +116,7 @@ export class TrelloView extends ItemView {
     });
   }
 
-  private renderCardInfo(
-    card: TrelloCard,
-    list: TrelloList | null,
-    parent: HTMLElement
-  ): void {
+  private renderCardInfo(card: TrelloCard, list: TrelloList | null, parent: HTMLElement): void {
     if (list) {
       const listName = parent.createDiv({
         cls: 'trello-pane--card-info--list',
@@ -174,11 +145,7 @@ export class TrelloView extends ItemView {
     });
   }
 
-  private renderCommentSection(
-    card: TrelloCard,
-    comments: TrelloAction[] | null,
-    parent: HTMLElement
-  ): void {
+  private renderCommentSection(card: TrelloCard, comments: TrelloAction[] | null, parent: HTMLElement): void {
     const container = parent.createDiv('trello-comment-input--container');
 
     // Small hack for auto-resizing textarea
@@ -223,9 +190,7 @@ export class TrelloView extends ItemView {
 
   private renderComment(comment: TrelloAction, parent: HTMLElement): void {
     const commentContainer = parent.createDiv('trello-comment--container');
-    const commentMetadata = commentContainer.createDiv(
-      'trello-comment--metadata'
-    );
+    const commentMetadata = commentContainer.createDiv('trello-comment--metadata');
     commentMetadata.createSpan({
       text: comment.memberCreator.fullName,
       cls: 'trello-comment--creator'
@@ -234,21 +199,14 @@ export class TrelloView extends ItemView {
       text: new Date(comment.date).toLocaleString(),
       cls: 'trello-comment--date'
     });
-    const textContainer = commentContainer.createDiv(
-      'trello-comment--text-container'
-    );
+    const textContainer = commentContainer.createDiv('trello-comment--text-container');
     textContainer.createEl('p', {
       text: comment.data.text,
       cls: 'trello-comment--text'
     });
   }
 
-  private renderNavButton(
-    parent: HTMLElement,
-    label: string,
-    icon: string,
-    callback: () => any
-  ) {
+  private renderNavButton(parent: HTMLElement, label: string, icon: string, callback: () => any) {
     const button = parent.createDiv({
       cls: 'nav-action-button',
       attr: { 'aria-label': label }

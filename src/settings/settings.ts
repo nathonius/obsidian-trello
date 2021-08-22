@@ -6,15 +6,11 @@ import { TrelloPlugin } from '../plugin';
 import { BoardSelectModal } from './board-select-modal';
 
 export class TrelloSettings extends PluginSettingTab {
-  private readonly boardSelectModal = new BoardSelectModal(
-    this.plugin,
-    this.plugin.app
-  );
+  private readonly boardSelectModal = new BoardSelectModal(this.plugin, this.plugin.app);
   constructor(app: App, private readonly plugin: TrelloPlugin) {
     super(app, plugin);
   }
 
-  // TODO: Handle no token
   async display(): Promise<void> {
     // Prepare container
     this.containerEl.empty();
@@ -28,10 +24,7 @@ export class TrelloSettings extends PluginSettingTab {
     });
   }
 
-  private async buildTokenSetting(
-    containerEl: HTMLElement,
-    settings: PluginSettings
-  ): Promise<void> {
+  private async buildTokenSetting(containerEl: HTMLElement, settings: PluginSettings): Promise<void> {
     const descFragment = new DocumentFragment();
     const desc = descFragment.createDiv({ cls: 'setting-item-description' });
     desc.innerHTML = `Your API token. <a href="${TRELLO_TOKEN_URL}">Generate one</a> then copy it here. This token can be revoked at any time in your Trello account settings.`;
@@ -59,10 +52,7 @@ export class TrelloSettings extends PluginSettingTab {
       });
   }
 
-  private buildOpenToSideSetting(
-    containerEl: HTMLElement,
-    settings: PluginSettings
-  ): void {
+  private buildOpenToSideSetting(containerEl: HTMLElement, settings: PluginSettings): void {
     new Setting(containerEl)
       .setName('Open to Side')
       .setDesc('Whether the Trello pane should open to the left or right side.')
@@ -72,10 +62,7 @@ export class TrelloSettings extends PluginSettingTab {
           .addOption(LeafSide.Left, 'Left')
           .setValue(settings.openToSide)
           .onChange(async (value) => {
-            await this.plugin.state.updateSetting(
-              'openToSide',
-              value as LeafSide
-            );
+            await this.plugin.state.updateSetting('openToSide', value as LeafSide);
           });
       });
   }

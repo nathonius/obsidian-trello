@@ -13,6 +13,12 @@ export const TRELLO_TOKEN_URL =
 export const TRELLO_API = 'https://api.trello.com';
 export const TRELLO_API_KEY = '9537467993aefd6dca9ee7788179c298';
 export const TRELLO_VIEW_TYPE = 'trello-plugin';
+export const TRELLO_ERRORS = {
+  noToken: 'The Trello plugin requires an API token for use. Please visit plugin settings.',
+  rateLimit: 'The Trello API is rate limited. Please try again later.',
+  metaEdit: 'The Trello plugin requires the MetaEdit plugin.',
+  other: 'The Trello API could not be reached. Please try again later.'
+};
 
 export const DEFAULT_SETTINGS: PluginSettings = {
   token: '',
@@ -21,7 +27,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 };
 
 export const DEFAULT_DATA: PluginData = {
-  settings: DEFAULT_SETTINGS
+  settings: DEFAULT_SETTINGS,
+  version: '1.0.0'
 };
 
 export enum MetaKey {
