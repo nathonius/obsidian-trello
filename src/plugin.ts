@@ -104,6 +104,11 @@ export class TrelloPlugin extends Plugin {
     this.app.workspace.detachLeavesOfType(TRELLO_VIEW_TYPE);
   }
 
+  openTrelloSettings() {
+    (this.app as any).setting.openTabById('obsidian-trello');
+    (this.app as any).setting.open();
+  }
+
   get metaEditAvailable(): boolean {
     const available = !!(this.app as any).plugins.plugins['metaedit'];
     if (!available) {

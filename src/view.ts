@@ -18,22 +18,29 @@ export class TrelloView extends ItemView {
   private readonly update = new Subject<void>();
   constructor(private readonly plugin: TrelloPlugin, leaf: WorkspaceLeaf) {
     super(leaf);
-    combineLatest([this.plugin.currentCard, this.update])
+    combineLatest([
+      this.plugin.state.settings,
+      this.plugin.currentCard,
+      this.update
+    ])
       .pipe(
         takeUntil(this.destroy),
-        switchMap(([card, _]) =>
+        switchMap(([settings, card, _]) =>
           forkJoin([
-            card && this.bypassCache
+            of(settings),
+            card && settings.token && this.bypassCache
               ? this.plugin.api.getCardFromBoard(card.idBoard, card.id, true)
               : of(card),
-            card
+            card && settings.token
               ? this.plugin.api.getActionsFromCard(
                   card.id,
                   undefined,
                   this.bypassCache
                 )
               : of(null),
-            card ? this.plugin.api.getList(card.idList) : of(null)
+            card && settings.token
+              ? this.plugin.api.getList(card.idList)
+              : of(null)
           ])
         ),
 
@@ -41,10 +48,12 @@ export class TrelloView extends ItemView {
           this.bypassCache = false;
         })
       )
-      .subscribe(([card, actions, list]) => {
+      .subscribe(([settings, card, actions, list]) => {
         this.contentEl.empty();
-        if (!card) {
-          this.renderEmptyView();
+        if (!settings.token || settings.token === '') {
+          this.renderEmptyView(true);
+        } else if (!card) {
+          this.renderEmptyView(false);
         } else {
           this.renderConnectedView(card, actions, list);
         }
@@ -73,16 +82,27 @@ export class TrelloView extends ItemView {
     return this.contentEl.createDiv('trello-pane--container');
   }
 
-  private renderEmptyView() {
+  private renderEmptyView(noToken: boolean) {
     const pane = this.renderPaneContainer();
     pane.createEl('h2', { text: 'No Trello card connected.' });
-    const connectButton = pane.createEl('button', {
-      text: 'Connect Trello Card',
-      attr: { type: 'button' }
-    });
-    connectButton.addEventListener('click', () => {
-      this.plugin.connectTrelloCard();
-    });
+    if (noToken) {
+      pane.createDiv({ text: 'An API token is required.' });
+      const tokenButton = pane.createEl('button', {
+        text: 'Setup Trello',
+        attr: { type: 'button' }
+      });
+      tokenButton.addEventListener('click', () => {
+        this.plugin.openTrelloSettings();
+      });
+    } else {
+      const connectButton = pane.createEl('button', {
+        text: 'Connect Trello Card',
+        attr: { type: 'button' }
+      });
+      connectButton.addEventListener('click', () => {
+        this.plugin.connectTrelloCard();
+      });
+    }
   }
 
   private renderConnectedView(
@@ -146,7 +166,6 @@ export class TrelloView extends ItemView {
   private renderLabels(card: TrelloCard, parent: HTMLElement): void {
     card.labels.forEach((label) => {
       if (label.color) {
-        console.log('ADDING LABEL');
         parent.createSpan({
           cls: `trello-label trello-color--${label.color}`,
           attr: { 'aria-label': label.name !== '' ? label.name : null }

@@ -8,6 +8,8 @@ export const CUSTOM_ICONS = {
   }
 };
 
+export const TRELLO_TOKEN_URL =
+  'https://trello.com/1/authorize?expiration=never&scope=read,write&response_type=token&name=Obsidian%20Trello%20Token&key=9537467993aefd6dca9ee7788179c298';
 export const TRELLO_API = 'https://api.trello.com';
 export const TRELLO_API_KEY = '9537467993aefd6dca9ee7788179c298';
 export const TRELLO_VIEW_TYPE = 'trello-plugin';

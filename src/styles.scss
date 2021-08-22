@@ -51,6 +51,14 @@
   }
 }
 
+.trello-board-select {
+  &--empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
 .trello-pane {
   &--container {
     padding: 0 8px;

@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import { map, take } from 'rxjs/operators';
+import { TRELLO_TOKEN_URL } from 'src/constants';
 import { LeafSide, PluginSettings } from 'src/interfaces';
 import { TrelloPlugin } from '../plugin';
 import { BoardSelectModal } from './board-select-modal';
@@ -31,9 +32,12 @@ export class TrelloSettings extends PluginSettingTab {
     containerEl: HTMLElement,
     settings: PluginSettings
   ): Promise<void> {
+    const descFragment = new DocumentFragment();
+    const desc = descFragment.createDiv({ cls: 'setting-item-description' });
+    desc.innerHTML = `Your API token. <a href="${TRELLO_TOKEN_URL}">Generate one</a> then copy it here. This token can be revoked at any time in your Trello account settings.`;
     new Setting(containerEl)
       .setName('Trello Token')
-      .setDesc('Your API token.')
+      .setDesc(descFragment)
       .addText((text) => {
         text
           .setPlaceholder('Enter token')
