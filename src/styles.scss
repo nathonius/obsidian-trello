@@ -1,3 +1,50 @@
+/* Trello Colors */
+:root {
+  --trello-green: #61bd4f;
+  --trello-yellow: #f2d600;
+  --trello-orange: #ff9f1a;
+  --trello-red: #eb5a46;
+  --trello-purple: #c377e0;
+  --trello-blue: #0079bf;
+  --trello-sky: #00c2e0;
+  --trello-lime: #51e898;
+  --trello-pink: #ff78cb;
+  --trello-black: #344563;
+}
+
+.trello-color {
+  &--green {
+    background-color: var(--trello-green);
+  }
+  &--yellow {
+    background-color: var(--trello-yellow);
+  }
+  &--orange {
+    background-color: var(--trello-orange);
+  }
+  &--red {
+    background-color: var(--trello-red);
+  }
+  &--purple {
+    background-color: var(--trello-purple);
+  }
+  &--blue {
+    background-color: var(--trello-blue);
+  }
+  &--sky {
+    background-color: var(--trello-sky);
+  }
+  &--lime {
+    background-color: var(--trello-lime);
+  }
+  &--pink {
+    background-color: var(--trello-pink);
+  }
+  &--black {
+    background-color: var(--trello-black);
+  }
+}
+
 .workspace-leaf-content[data-type='trello-plugin'] {
   .view-content {
     padding: 0;
@@ -11,13 +58,39 @@
     flex-direction: column;
   }
   &--card-info {
+    &--list {
+      color: var(--text-faint);
+      font-size: 12px;
+      svg {
+        vertical-align: middle;
+      }
+    }
     h3 {
       margin: 0;
+      a {
+        margin-left: 4px;
+        svg {
+          vertical-align: middle;
+        }
+      }
     }
   }
   &--comment-section {
     h4 {
       margin: 0;
+    }
+  }
+  &--label-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, 40px);
+    grid-gap: 4px;
+    margin-top: 6px;
+    margin-bottom: 8px;
+
+    .trello-label {
+      height: 8px;
+      width: 40px;
+      border-radius: 4px;
     }
   }
 }

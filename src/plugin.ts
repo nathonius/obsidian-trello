@@ -20,7 +20,9 @@ import {
   MetaEditApi,
   PluginData,
   TrelloAction,
-  TrelloCard
+  TrelloCard,
+  TrelloItemCache,
+  TrelloList
 } from './interfaces';
 
 import { TrelloSettings } from './settings';
@@ -35,12 +37,9 @@ export class TrelloPlugin extends Plugin {
   view!: TrelloView;
   readonly boardSuggestModal = new BoardSuggestModal(this.app);
   readonly cardSuggestModal = new CardSuggestModal(this.app);
-  readonly cardCache: Record<string, { card: TrelloCard; timestamp: Date }> =
-    {};
-  readonly cardActionsCache: Record<
-    string,
-    { actions: TrelloAction[]; timestamp: Date }
-  > = {};
+  readonly cardCache: TrelloItemCache<TrelloCard> = {};
+  readonly cardActionsCache: TrelloItemCache<TrelloAction[]> = {};
+  readonly listCache: TrelloItemCache<TrelloList> = {};
   readonly currentCard = new BehaviorSubject<TrelloCard | null>(null);
 
   // TODO: Handle no token

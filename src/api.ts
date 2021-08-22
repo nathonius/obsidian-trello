@@ -6,7 +6,8 @@ import {
   TrelloAction,
   TrelloActionType,
   TrelloBoard,
-  TrelloCard
+  TrelloCard,
+  TrelloList
 } from './interfaces';
 import { TrelloPlugin } from './plugin';
 
@@ -34,15 +35,14 @@ export class TrelloAPI {
     cacheExpireMs = 60000 // 1 minute
   ): Observable<TrelloCard> {
     const cached = this.plugin.cardCache[cardId];
-    const now = new Date();
     if (
       !cached ||
       bypassCache ||
-      now.getTime() - cached.timestamp.getTime() > cacheExpireMs
+      new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs
     ) {
       return this._getCardFromBoard(boardId, cardId);
     }
-    return of(cached.card);
+    return of(cached.item);
   }
 
   private _getCardFromBoard(
@@ -54,9 +54,35 @@ export class TrelloAPI {
       map((resp) => resp.response),
       tap((card) => {
         this.plugin.cardCache[card.id] = {
-          card,
+          item: card,
           timestamp: new Date()
         };
+      })
+    );
+  }
+
+  getList(
+    listId: string,
+    bypassCache = false,
+    cacheExpireMs = 600000 // 10 minutes
+  ): Observable<TrelloList> {
+    const cached = this.plugin.listCache[listId];
+    if (
+      !cached ||
+      bypassCache ||
+      new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs
+    ) {
+      return this._getList(listId);
+    }
+    return of(cached.item);
+  }
+
+  private _getList(listId: string): Observable<TrelloList> {
+    const url = this.auth(`${TRELLO_API}/1/lists/${listId}`);
+    return ajax<TrelloList>({ url, crossDomain: true }).pipe(
+      map((resp) => resp.response),
+      tap((list) => {
+        this.plugin.listCache[list.id] = { item: list, timestamp: new Date() };
       })
     );
   }
@@ -67,7 +93,10 @@ export class TrelloAPI {
       tap((resp) => {
         const cards = resp.response;
         cards.forEach((card) => {
-          this.plugin.cardCache[card.id] = { card, timestamp: new Date() };
+          this.plugin.cardCache[card.id] = {
+            item: card,
+            timestamp: new Date()
+          };
         });
       })
     );
@@ -77,20 +106,19 @@ export class TrelloAPI {
     cardId: string,
     actionTypes: string[] = [TrelloActionType.Comment],
     bypassCache = false,
-    cacheExpireMs = 60000
+    cacheExpireMs = 60000 // 1 minute
   ): Observable<TrelloAction[]> {
     const cached = this.plugin.cardActionsCache[cardId];
-    const now = new Date();
     if (
       !cached ||
       bypassCache ||
-      now.getTime() - cached.timestamp.getTime() > cacheExpireMs
+      new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs
     ) {
       return this._getActionsFromCard(cardId, actionTypes).pipe(
         map((resp) => resp.response)
       );
     }
-    return of(cached.actions);
+    return of(cached.item);
   }
 
   private _getActionsFromCard(

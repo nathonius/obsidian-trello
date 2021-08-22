@@ -2,7 +2,7 @@ import { ItemView, Notice, setIcon, WorkspaceLeaf } from 'obsidian';
 import { combineLatest, forkJoin, of, Subject } from 'rxjs';
 import { finalize, switchMap, takeUntil, tap } from 'rxjs/operators';
 import { CUSTOM_ICONS, TRELLO_VIEW_TYPE } from './constants';
-import { TrelloAction, TrelloCard } from './interfaces';
+import { TrelloAction, TrelloCard, TrelloList } from './interfaces';
 import { TrelloPlugin } from './plugin';
 
 /**
@@ -23,26 +23,30 @@ export class TrelloView extends ItemView {
         takeUntil(this.destroy),
         switchMap(([card, _]) =>
           forkJoin([
-            of(card),
+            card && this.bypassCache
+              ? this.plugin.api.getCardFromBoard(card.idBoard, card.id, true)
+              : of(card),
             card
               ? this.plugin.api.getActionsFromCard(
                   card.id,
                   undefined,
                   this.bypassCache
                 )
-              : of(null)
+              : of(null),
+            card ? this.plugin.api.getList(card.idList) : of(null)
           ])
         ),
+
         finalize(() => {
           this.bypassCache = false;
         })
       )
-      .subscribe(([card, actions]) => {
+      .subscribe(([card, actions, list]) => {
         this.contentEl.empty();
         if (!card) {
           this.renderEmptyView();
         } else {
-          this.renderConnectedView(card, actions);
+          this.renderConnectedView(card, actions, list);
         }
       });
     this.update.next();
@@ -83,17 +87,18 @@ export class TrelloView extends ItemView {
 
   private renderConnectedView(
     card: TrelloCard,
-    actions: TrelloAction[] | null
+    actions: TrelloAction[] | null,
+    list: TrelloList | null
   ): void {
     this.renderHeader(this.contentEl);
     const pane = this.renderPaneContainer();
     const cardInfo = pane.createDiv('trello-pane--card-info');
-    this.renderCardInfo(card, cardInfo);
+    this.renderCardInfo(card, list, cardInfo);
     if (card.labels && card.labels.length > 0) {
       const labelSectionContainer = pane.createDiv(
-        'trello-pane--labels-section'
+        'trello-pane--label-section'
       );
-      // TODO: Render labels
+      this.renderLabels(card, labelSectionContainer);
     }
     const commentSectionContainer = pane.createDiv(
       'trello-pane--comment-section'
@@ -116,9 +121,38 @@ export class TrelloView extends ItemView {
     });
   }
 
-  private renderCardInfo(card: TrelloCard, parent: HTMLElement): void {
-    parent.createEl('h3', { text: card.name });
+  private renderCardInfo(
+    card: TrelloCard,
+    list: TrelloList | null,
+    parent: HTMLElement
+  ): void {
+    if (list) {
+      const listName = parent.createDiv({
+        cls: 'trello-pane--card-info--list',
+        text: list.name
+      });
+      const listIcon = listName.createSpan();
+      setIcon(listIcon, 'right-arrow-with-tail');
+    }
+    const cardName = parent.createEl('h3', { text: card.name });
+    const cardLink = cardName.createEl('a', {
+      attr: { href: card.url, 'aria-label': 'View on Trello' }
+    });
+    setIcon(cardLink, 'navigate-glyph', 24);
+
     parent.createEl('span', { text: card.desc });
+  }
+
+  private renderLabels(card: TrelloCard, parent: HTMLElement): void {
+    card.labels.forEach((label) => {
+      if (label.color) {
+        console.log('ADDING LABEL');
+        parent.createSpan({
+          cls: `trello-label trello-color--${label.color}`,
+          attr: { 'aria-label': label.name !== '' ? label.name : null }
+        });
+      }
+    });
   }
 
   private renderCommentSection(

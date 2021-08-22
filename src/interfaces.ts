@@ -16,6 +16,8 @@ export enum LeafSide {
   Right = 'right'
 }
 
+export type TrelloItemCache<T> = Record<string, { item: T; timestamp: Date }>;
+
 // 3rd Party
 export interface MetaEditApi {
   createYamlProperty: (
@@ -195,7 +197,7 @@ export interface TrelloLabel {
   id: string;
   idBoard: string;
   name: string;
-  color: TrelloLabelColor;
+  color: TrelloLabelColor | null;
 }
 
 export interface TrelloCard {
