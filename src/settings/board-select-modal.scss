@@ -1,0 +1,25 @@
+.trello-board-select {
+  &--empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  &--toggle-container {
+    display: flex;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    &:hover {
+      background-color: var(--background-primary);
+    }
+  }
+  &--toggle-label {
+    flex-grow: 1;
+    max-width: 500px;
+    margin-right: 10px;
+    font-size: 14px;
+  }
+  &--controls {
+    margin-top: 8px;
+  }
+}

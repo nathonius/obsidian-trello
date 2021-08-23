@@ -1,6 +1,6 @@
-import TrelloPlugin from 'main';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { filter, finalize, switchMap, takeUntil, tap } from 'rxjs/operators';
+import { TrelloPlugin } from '../plugin';
 import { PluginError, TrelloAction, TrelloCard, TrelloList } from '../interfaces';
 
 /**

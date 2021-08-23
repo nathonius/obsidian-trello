@@ -1,8 +1,7 @@
-import { Notice } from 'obsidian';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { ajax, AjaxError, AjaxResponse } from 'rxjs/ajax';
 import { map, takeUntil, tap, catchError } from 'rxjs/operators';
-import { TRELLO_API, TRELLO_API_KEY, TRELLO_ERRORS } from './constants';
+import { TRELLO_API, TRELLO_API_KEY } from './constants';
 import { PluginError, TrelloAction, TrelloActionType, TrelloBoard, TrelloCard, TrelloList } from './interfaces';
 import { TrelloPlugin } from './plugin';
 

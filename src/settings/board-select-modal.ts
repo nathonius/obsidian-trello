@@ -1,9 +1,11 @@
 import { App, Modal, Notice } from 'obsidian';
 import { forkJoin } from 'rxjs';
-import { map, take, tap } from 'rxjs/operators';
-import { TRELLO_ERRORS } from 'src/constants';
+import { map, take } from 'rxjs/operators';
+import { TRELLO_ERRORS } from '../constants';
 import { TrelloBoard } from '../interfaces';
 import { TrelloPlugin } from '../plugin';
+
+import './board-select-modal.scss';
 
 export class BoardSelectModal extends Modal {
   private readonly selectedBoards = this.plugin.state.settings.pipe(
@@ -76,6 +78,9 @@ export class BoardSelectModal extends Modal {
     this.contentEl.empty();
   }
 
+  /**
+   * Uses obsidian's toggle styling to create toggle switches for each board
+   */
   private buildToggle(board: TrelloBoard, parent: HTMLElement): void {
     const container = parent.createDiv('trello-board-select--toggle-container');
     container.createDiv({ text: board.name, cls: 'trello-board-select--toggle-label' });

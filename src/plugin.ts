@@ -1,19 +1,9 @@
 import { FileView, Notice, Plugin, addIcon, TFile, WorkspaceLeaf } from 'obsidian';
-import { BehaviorSubject, concat, forkJoin, from, iif, Observable, of, Subject } from 'rxjs';
-import { take, map, concatMap, tap, finalize, takeUntil } from 'rxjs/operators';
-import { TrelloAPI } from './api';
+import { BehaviorSubject, from, iif, Observable, of, Subject } from 'rxjs';
+import { take, map, concatMap, tap, takeUntil } from 'rxjs/operators';
 import { CUSTOM_ICONS, DEFAULT_DATA, MetaKey, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from './constants';
-import {
-  LeafSide,
-  MetaEditApi,
-  PluginData,
-  PluginError,
-  TrelloAction,
-  TrelloCard,
-  TrelloItemCache,
-  TrelloList
-} from './interfaces';
-
+import { LeafSide, MetaEditApi, PluginData, TrelloAction, TrelloCard, TrelloItemCache, TrelloList } from './interfaces';
+import { TrelloAPI } from './api';
 import { TrelloSettings } from './settings';
 import { PluginState } from './state';
 import { CardSuggestModal, BoardSuggestModal } from './suggest';
@@ -70,10 +60,6 @@ export class TrelloPlugin extends Plugin {
       )
       .subscribe((token) => {
         this.currentToken.next(token);
-
-        if (token) {
-          this.handleFile(this.app.workspace.getActiveFile());
-        }
       });
 
     // Register trello view type

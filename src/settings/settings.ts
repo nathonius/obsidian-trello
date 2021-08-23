@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import { map, take } from 'rxjs/operators';
-import { TRELLO_TOKEN_URL } from 'src/constants';
-import { LeafSide, PluginSettings } from 'src/interfaces';
+import { take } from 'rxjs/operators';
+import { TRELLO_TOKEN_URL } from '../constants';
+import { LeafSide, PluginSettings } from '../interfaces';
 import { TrelloPlugin } from '../plugin';
 import { BoardSelectModal } from './board-select-modal';
 
