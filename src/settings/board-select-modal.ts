@@ -10,6 +10,7 @@ export class BoardSelectModal extends Modal {
     take(1),
     map((settings) => (settings.selectedBoards ? settings.selectedBoards : []))
   );
+  private newState: Record<string, TrelloBoard> = {};
   constructor(private readonly plugin: TrelloPlugin, app: App) {
     super(app);
   }
@@ -22,19 +23,25 @@ export class BoardSelectModal extends Modal {
       boards: this.plugin.api.getBoards()
     }).subscribe({
       next: ({ selected, boards }) => {
-        this.contentEl.createEl('h2', { text: 'Boards' });
+        const container = this.contentEl.createDiv('trello-board-select--container');
+        container.createEl('h2', { text: 'Boards', cls: 'trello-board-select--title' });
 
-        // Add checkbox for each board
-        const checkboxes: HTMLInputElement[] = [];
+        // Set the current state
+        this.newState = {};
+        selected.forEach((board) => {
+          this.newState[board.id] = board;
+        });
+
+        // Add toggle for each board
         boards.forEach((board) => {
-          checkboxes.push(this.buildCheckbox(selected, board));
+          this.buildToggle(board, container);
         });
 
         // Add save/cancel
-        const controls = this.contentEl.createDiv();
+        const controls = this.contentEl.createDiv('trello-board-select--controls');
         const saveButton = controls.createEl('button', { text: 'Save' });
         saveButton.addEventListener('click', () => {
-          this.onSave(boards, checkboxes);
+          this.onSave();
         });
         const cancelButton = controls.createEl('button', { text: 'Cancel' });
         cancelButton.addEventListener('click', () => {
@@ -69,33 +76,26 @@ export class BoardSelectModal extends Modal {
     this.contentEl.empty();
   }
 
-  private buildCheckbox(selected: TrelloBoard[], board: TrelloBoard): HTMLInputElement {
-    const container = this.contentEl.createDiv();
-    const checkbox = container.createEl('input', {
-      attr: {
-        type: 'checkbox',
-        id: `board-${board.id}`
+  private buildToggle(board: TrelloBoard, parent: HTMLElement): void {
+    const container = parent.createDiv('trello-board-select--toggle-container');
+    container.createDiv({ text: board.name, cls: 'trello-board-select--toggle-label' });
+    const toggle = container.createDiv({ cls: 'trello-board-select--toggle checkbox-container' });
+    if (this.newState[board.id]) {
+      toggle.classList.add('is-enabled');
+    }
+    container.addEventListener('click', () => {
+      if (this.newState[board.id]) {
+        toggle.classList.remove('is-enabled');
+        delete this.newState[board.id];
+      } else {
+        toggle.classList.add('is-enabled');
+        this.newState[board.id] = board;
       }
     });
-    checkbox.value = board.id;
-    checkbox.checked = selected.findIndex((s) => s.id === board.id) !== -1;
-    container.createEl('label', {
-      text: board.name,
-      attr: { for: `board-${board.id}` }
-    });
-    return checkbox;
   }
 
-  private onSave(boards: TrelloBoard[], checkboxes: HTMLInputElement[]): void {
-    const newSelected: TrelloBoard[] = [];
-    checkboxes.forEach((box) => {
-      if (box.checked) {
-        const board = boards.find((b) => b.id === box.value);
-        if (board) {
-          newSelected.push(board);
-        }
-      }
-    });
+  private onSave(): void {
+    const newSelected: TrelloBoard[] = Object.values(this.newState);
     this.plugin.state.updateSetting('selectedBoards', newSelected);
     this.close();
   }
