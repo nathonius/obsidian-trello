@@ -1,5 +1,7 @@
 # Obsidian Trello
 
+![ObsidianTrello][doc/screenshot.png]
+
 ## Overview
 
 Connect a single Trello card to an Obsidian note. Once connected, see basic info, and add and view comments.
