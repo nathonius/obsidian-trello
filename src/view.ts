@@ -131,7 +131,20 @@ export class TrelloView extends ItemView {
     });
     setIcon(cardLink, 'navigate-glyph', 24);
 
-    parent.createEl('span', { text: card.desc });
+    const descContainer = parent.createDiv('trello-card-desc--container');
+    const collapseButton = descContainer.createEl('button', { text: 'Description', cls: 'trello-card-desc--collapse' });
+    const collapseIcon = collapseButton.createSpan('trello-card-desc--collapse-icon');
+    setIcon(collapseIcon, 'up-chevron-glyph');
+    const description = descContainer.createDiv({ text: card.desc, cls: 'trello-card-desc--desc' });
+    collapseButton.addEventListener('click', () => {
+      if (description.style.maxHeight) {
+        description.style.maxHeight = '';
+        setIcon(collapseIcon, 'up-chevron-glyph');
+      } else {
+        description.style.maxHeight = description.scrollHeight + 'px';
+        setIcon(collapseIcon, 'down-chevron-glyph');
+      }
+    });
   }
 
   private renderLabels(card: TrelloCard, parent: HTMLElement): void {
