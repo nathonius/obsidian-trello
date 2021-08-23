@@ -1,6 +1,6 @@
 # Obsidian Trello
 
-![ObsidianTrello][doc/screenshot.png]
+![ObsidianTrello](doc/screenshot.png)
 
 ## Overview
 
