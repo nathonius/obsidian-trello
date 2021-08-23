@@ -1,4 +1,4 @@
-# Obsidian Trello Plugin
+# Obsidian Trello
 
 ## Overview
 

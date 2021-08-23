@@ -12,6 +12,13 @@ export interface PluginSettings {
   openToSide: LeafSide;
 }
 
+export enum PluginError {
+  NoToken = 'NoToken',
+  Unauthorized = 'Unauthorized',
+  RateLimit = 'RateLimit',
+  Unknown = 'Unknown'
+}
+
 export enum LeafSide {
   Left = 'left',
   Right = 'right'

@@ -19,7 +19,7 @@ export class BoardSelectModal extends Modal {
 
     forkJoin({
       selected: this.selectedBoards,
-      boards: this.plugin.api.getBoards().pipe(map((resp) => resp.response))
+      boards: this.plugin.api.getBoards()
     }).subscribe({
       next: ({ selected, boards }) => {
         this.contentEl.createEl('h2', { text: 'Boards' });

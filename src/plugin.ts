@@ -1,9 +1,18 @@
 import { FileView, Notice, Plugin, addIcon, TFile, WorkspaceLeaf } from 'obsidian';
-import { BehaviorSubject, from, iif, Observable, of, Subject } from 'rxjs';
+import { BehaviorSubject, concat, forkJoin, from, iif, Observable, of, Subject } from 'rxjs';
 import { take, map, concatMap, tap, finalize, takeUntil } from 'rxjs/operators';
 import { TrelloAPI } from './api';
 import { CUSTOM_ICONS, DEFAULT_DATA, MetaKey, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from './constants';
-import { LeafSide, MetaEditApi, PluginData, TrelloAction, TrelloCard, TrelloItemCache, TrelloList } from './interfaces';
+import {
+  LeafSide,
+  MetaEditApi,
+  PluginData,
+  PluginError,
+  TrelloAction,
+  TrelloCard,
+  TrelloItemCache,
+  TrelloList
+} from './interfaces';
 
 import { TrelloSettings } from './settings';
 import { PluginState } from './state';
@@ -20,7 +29,7 @@ export class TrelloPlugin extends Plugin {
   readonly cardCache: TrelloItemCache<TrelloCard> = {};
   readonly cardActionsCache: TrelloItemCache<TrelloAction[]> = {};
   readonly listCache: TrelloItemCache<TrelloList> = {};
-  readonly currentCard = new BehaviorSubject<TrelloCard | null>(null);
+  readonly boardCardId = new BehaviorSubject<string | null>(null);
   readonly currentToken = new BehaviorSubject<string>('');
 
   get metaEditAvailable(): boolean {
@@ -126,15 +135,12 @@ export class TrelloPlugin extends Plugin {
     }
     const existing = await this.metaEdit.getPropertyValue(MetaKey.BoardCard, file);
     if (!existing) {
-      this.currentCard.next(null);
+      this.boardCardId.next(null);
       return;
     }
 
     // This file is trello connected
-    const [boardId, cardId] = existing.split(';');
-    this.api.getCardFromBoard(boardId, cardId).subscribe((card) => {
-      this.currentCard.next(card);
-    });
+    this.boardCardId.next(existing);
   }
 
   /**
@@ -167,9 +173,7 @@ export class TrelloPlugin extends Plugin {
           take(1),
           map((s) => s.selectedBoards),
           // If boards were selected, use those. Otherwise, call API.
-          concatMap((boards) =>
-            iif(() => boards.length > 0, of(boards), this.api.getBoards().pipe(map((resp) => resp.response)))
-          ),
+          concatMap((boards) => iif(() => boards.length > 0, of(boards), this.api.getBoards())),
           // Open board suggestion modal
           concatMap((boards) => {
             this.boardSuggestModal.boards = boards;
@@ -179,7 +183,6 @@ export class TrelloPlugin extends Plugin {
           take(1),
           // Get available cards from selected board
           concatMap((selected) => this.api.getCardsFromBoard(selected.id)),
-          map((resp) => resp.response),
           // Open card suggestion modal
           concatMap((cards) => {
             this.cardSuggestModal.cards = cards;
@@ -187,23 +190,15 @@ export class TrelloPlugin extends Plugin {
             return this.cardSuggestModal.selectedCard;
           }),
           take(1),
-          // Update selected card
-          tap((selected) => {
-            this.currentCard.next(selected);
+          map((selected) => `${selected.idBoard};${selected.id}`),
+          tap((boardCardId) => {
+            this.boardCardId.next(boardCardId);
           }),
-          // Add frontmatter value
-          concatMap((selected) =>
-            this.updateOrCreateMeta(MetaKey.BoardCard, `${selected.idBoard};${selected.id}`, view.file)
-          )
+          concatMap((boardCardId) => this.updateOrCreateMeta(MetaKey.BoardCard, boardCardId, view.file))
         )
         .subscribe({
           next: () => {
             this.revealTrelloLeaf(true);
-          },
-          error: () => {
-            if (!this.currentToken.value || this.currentToken.value === '') {
-              new Notice(TRELLO_ERRORS.noToken);
-            }
           }
         });
     }
@@ -219,7 +214,7 @@ export class TrelloPlugin extends Plugin {
       from(this.metaEdit.getPropertyValue(MetaKey.BoardCard, view.file)).subscribe((existing) => {
         if (existing) {
           this.metaEdit.deleteProperty(MetaKey.BoardCard, view.file);
-          this.currentCard.next(null);
+          this.boardCardId.next(null);
         }
       });
     }

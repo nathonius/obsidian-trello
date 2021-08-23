@@ -17,7 +17,8 @@ export const TRELLO_ERRORS = {
   noToken: 'The Trello plugin requires an API token for use. Please visit plugin settings.',
   rateLimit: 'The Trello API is rate limited. Please try again later.',
   metaEdit: 'The Trello plugin requires the MetaEdit plugin.',
-  other: 'The Trello API could not be reached. Please try again later.'
+  unauthorized: 'The Trello API rejected your token. Please create a new token.',
+  other: 'The Trello API could not be reached. Please create a new token or try again later.'
 };
 
 export const DEFAULT_SETTINGS: PluginSettings = {

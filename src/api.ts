@@ -1,8 +1,9 @@
-import { BehaviorSubject, Observable, of } from 'rxjs';
-import { ajax, AjaxResponse } from 'rxjs/ajax';
-import { map, takeUntil, tap } from 'rxjs/operators';
-import { TRELLO_API, TRELLO_API_KEY } from './constants';
-import { TrelloAction, TrelloActionType, TrelloBoard, TrelloCard, TrelloList } from './interfaces';
+import { Notice } from 'obsidian';
+import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
+import { ajax, AjaxError, AjaxResponse } from 'rxjs/ajax';
+import { map, takeUntil, tap, catchError } from 'rxjs/operators';
+import { TRELLO_API, TRELLO_API_KEY, TRELLO_ERRORS } from './constants';
+import { PluginError, TrelloAction, TrelloActionType, TrelloBoard, TrelloCard, TrelloList } from './interfaces';
 import { TrelloPlugin } from './plugin';
 
 export class TrelloAPI {
@@ -21,9 +22,15 @@ export class TrelloAPI {
    * Get all boards for current user.
    * This is not cached.
    */
-  getBoards(): Observable<AjaxResponse<TrelloBoard[]>> {
+  getBoards(): Observable<TrelloBoard[]> {
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
     const url = this.auth(`${TRELLO_API}/1/members/me/boards?fields=name,url`);
-    return ajax<TrelloBoard[]>({ url, crossDomain: true });
+    return ajax<TrelloBoard[]>({ url, crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err)),
+      map((resp) => resp.response)
+    );
   }
 
   /**
@@ -48,14 +55,20 @@ export class TrelloAPI {
    * Always calls API and updates cache.
    */
   private _getCardFromBoard(boardId: string, cardId: string): Observable<TrelloCard> {
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
     const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/cards/${cardId}`);
     return ajax<TrelloCard>({ url, crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response),
       tap((card) => {
-        this.plugin.cardCache[card.id] = {
-          item: card,
-          timestamp: new Date()
-        };
+        if (card) {
+          this.plugin.cardCache[card.id] = {
+            item: card,
+            timestamp: new Date()
+          };
+        }
       })
     );
   }
@@ -81,11 +94,17 @@ export class TrelloAPI {
    * Always calls API and updates cache.
    */
   private _getList(listId: string): Observable<TrelloList> {
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
     const url = this.auth(`${TRELLO_API}/1/lists/${listId}`);
     return ajax<TrelloList>({ url, crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response),
       tap((list) => {
-        this.plugin.listCache[list.id] = { item: list, timestamp: new Date() };
+        if (list) {
+          this.plugin.listCache[list.id] = { item: list, timestamp: new Date() };
+        }
       })
     );
   }
@@ -94,11 +113,15 @@ export class TrelloAPI {
    * Get all cards from a board by board ID.
    * This always calls the API and updates the cache.
    */
-  getCardsFromBoard(boardId: string): Observable<AjaxResponse<TrelloCard[]>> {
+  getCardsFromBoard(boardId: string): Observable<TrelloCard[]> {
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
     const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/cards`);
     return ajax<TrelloCard[]>({ url, crossDomain: true }).pipe(
-      tap((resp) => {
-        const cards = resp.response;
+      catchError((err) => this.handleAPIError(err)),
+      map((resp) => resp.response),
+      tap((cards) => {
         cards.forEach((card) => {
           this.plugin.cardCache[card.id] = {
             item: card,
@@ -122,7 +145,7 @@ export class TrelloAPI {
   ): Observable<TrelloAction[]> {
     const cached = this.plugin.cardActionsCache[cardId];
     if (!cached || bypassCache || new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs) {
-      return this._getActionsFromCard(cardId, actionTypes).pipe(map((resp) => resp.response));
+      return this._getActionsFromCard(cardId, actionTypes);
     }
     return of(cached.item);
   }
@@ -134,17 +157,33 @@ export class TrelloAPI {
   private _getActionsFromCard(
     cardId: string,
     actionTypes: string[] = [TrelloActionType.Comment]
-  ): Observable<AjaxResponse<TrelloAction[]>> {
+  ): Observable<TrelloAction[]> {
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
     const url = this.auth(`${TRELLO_API}/1/cards/${cardId}/actions?filter=${actionTypes.join(',')}`);
-    return ajax<TrelloAction[]>({ url, crossDomain: true });
+    return ajax<TrelloAction[]>({ url, crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err)),
+      map((resp) => resp.response),
+      tap((actions) => {
+        if (actions) {
+          this.plugin.cardActionsCache[cardId] = { item: actions, timestamp: new Date() };
+        }
+      })
+    );
   }
 
   /**
    * Add a new comment to a card.
    */
   addCommentToCard(cardId: string, content: string): Observable<AjaxResponse<TrelloAction>> {
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
     const url = this.auth(`${TRELLO_API}/1/cards/${cardId}/actions/comments?text=${encodeURIComponent(content)}`);
-    return ajax<TrelloAction>({ url, method: 'POST', crossDomain: true });
+    return ajax<TrelloAction>({ url, method: 'POST', crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err))
+    );
   }
 
   /**
@@ -153,5 +192,22 @@ export class TrelloAPI {
    */
   private auth(url: string): string {
     return `${url}${url.includes('?') ? '&' : '?'}key=${TRELLO_API_KEY}&token=${this.token.value}`;
+  }
+
+  private handleAPIError(err: any): Observable<never> {
+    return throwError(() => {
+      if (err instanceof AjaxError) {
+        switch (err.status) {
+          case 401:
+            return PluginError.Unauthorized;
+          case 429:
+            return PluginError.RateLimit;
+          default:
+            return PluginError.Unknown;
+        }
+      } else {
+        return PluginError.Unknown;
+      }
+    });
   }
 }

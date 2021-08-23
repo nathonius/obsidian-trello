@@ -1,47 +1,142 @@
 import { ItemView, Notice, setIcon, WorkspaceLeaf } from 'obsidian';
-import { combineLatest, forkJoin, of, Subject } from 'rxjs';
-import { finalize, switchMap, takeUntil, tap } from 'rxjs/operators';
-import { CUSTOM_ICONS, TRELLO_VIEW_TYPE } from './constants';
-import { TrelloAction, TrelloCard, TrelloList } from './interfaces';
+import { BehaviorSubject, combineLatest, forkJoin, of, Subject, throwError } from 'rxjs';
+import { catchError, concatMap, filter, finalize, mergeMap, switchMap, takeUntil, tap } from 'rxjs/operators';
+import { CUSTOM_ICONS, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from './constants';
+import { PluginError, TrelloAction, TrelloCard, TrelloList } from './interfaces';
 import { TrelloPlugin } from './plugin';
 
 export class TrelloView extends ItemView {
-  private bypassCache = false;
+  // Cache bust
+  private bypassActionCache = false;
+  private bypassListCache = false;
+
+  // Error handling
+  private cardError: PluginError | null = null;
+  private actionsError: PluginError | null = null;
+  private listError: PluginError | null = null;
+
+  // Data
+  private readonly currentCard = new BehaviorSubject<TrelloCard | null>(null);
+  private readonly currentActions = new BehaviorSubject<TrelloAction[] | null>(null);
+  private readonly currentList = new BehaviorSubject<TrelloList | null>(null);
+
+  // Flow control
   private readonly destroy = new Subject<void>();
   private readonly update = new Subject<void>();
   constructor(private readonly plugin: TrelloPlugin, leaf: WorkspaceLeaf) {
     super(leaf);
-    combineLatest([this.plugin.state.settings, this.plugin.currentCard, this.update])
+
+    // Update card
+    this.plugin.boardCardId
       .pipe(
         takeUntil(this.destroy),
-        switchMap(([settings, card, _]) =>
-          forkJoin([
-            of(settings),
-            card && settings.token && this.bypassCache
-              ? this.plugin.api.getCardFromBoard(card.idBoard, card.id, true)
-              : of(card),
-            card && settings.token
-              ? this.plugin.api.getActionsFromCard(card.id, undefined, this.bypassCache)
-              : of(null),
-            card && settings.token ? this.plugin.api.getList(card.idList) : of(null)
-          ])
-        ),
-
-        finalize(() => {
-          this.bypassCache = false;
+        tap((boardCard) => {
+          if (!boardCard) {
+            this.cardError = null;
+            this.actionsError = null;
+            this.listError = null;
+            this.currentCard.next(null);
+            this.currentActions.next(null);
+            this.currentList.next(null);
+          }
+        }),
+        filter((boardCard) => boardCard !== null && boardCard !== ''),
+        switchMap((boardCard) => {
+          const [boardId, cardId] = boardCard!.split(';');
+          return this.plugin.api.getCardFromBoard(boardId, cardId);
         })
       )
-      .subscribe(([settings, card, actions, list]) => {
+      .subscribe({
+        next: (card) => {
+          if (this.currentCard.value !== null && this.currentCard.value.id !== card.id) {
+            this.currentActions.next(null);
+            this.currentList.next(null);
+          }
+          this.cardError = null;
+          this.currentCard.next(card);
+        },
+        error: (err: PluginError) => {
+          this.cardError = err;
+          this.currentCard.next(null);
+        }
+      });
+
+    // Update actions
+    this.currentCard
+      .pipe(
+        takeUntil(this.destroy),
+        filter((card) => card !== null),
+        switchMap((card) => this.plugin.api.getActionsFromCard(card!.id, undefined, this.bypassActionCache)),
+        finalize(() => {
+          this.bypassActionCache = false;
+        })
+      )
+      .subscribe({
+        next: (actions) => {
+          this.actionsError = null;
+          this.currentActions.next(actions);
+        },
+        error: (err: PluginError) => {
+          this.actionsError = err;
+          this.currentActions.next(null);
+        }
+      });
+
+    // Update list
+    this.currentCard
+      .pipe(
+        takeUntil(this.destroy),
+        filter((card) => card !== null),
+        switchMap((card) => this.plugin.api.getList(card!.idList, this.bypassListCache)),
+        finalize(() => {
+          this.bypassListCache = false;
+        })
+      )
+      .subscribe({
+        next: (list) => {
+          this.listError = null;
+          this.currentList.next(list);
+        },
+        error: (err: PluginError) => {
+          this.listError = err;
+          this.currentList.next(null);
+        }
+      });
+
+    // Refresh data
+    this.update
+      .pipe(
+        takeUntil(this.destroy),
+        filter(() => this.currentCard.value !== null),
+        tap(() => {
+          this.bypassActionCache = true;
+          this.bypassListCache = true;
+        }),
+        switchMap(() => {
+          const card = this.currentCard.value!;
+          return this.plugin.api.getCardFromBoard(card.idBoard, card.id, true);
+        })
+      )
+      .subscribe((card) => {
+        if (card) {
+          this.currentCard.next(card);
+        }
+      });
+
+    // Render
+    combineLatest([this.currentCard, this.currentActions, this.currentList])
+      .pipe(takeUntil(this.destroy))
+      .subscribe(([card, actions, list]) => {
         this.contentEl.empty();
-        if (!settings.token || settings.token === '') {
-          this.renderEmptyView(true);
-        } else if (!card) {
-          this.renderEmptyView(false);
+        const errors = [this.cardError, this.actionsError, this.listError];
+        if (errors.some((err) => err !== null)) {
+          this.renderEmptyView(this.getWorstError(errors));
+        } else if (card === null) {
+          this.renderEmptyView(null);
         } else {
           this.renderConnectedView(card, actions, list);
         }
       });
-    this.update.next();
   }
 
   getDisplayText(): string {
@@ -65,26 +160,44 @@ export class TrelloView extends ItemView {
     return this.contentEl.createDiv('trello-pane--container');
   }
 
-  private renderEmptyView(noToken: boolean) {
+  private renderEmptyView(error: PluginError | null) {
     const pane = this.renderPaneContainer();
-    pane.createEl('h2', { text: 'No Trello card connected.' });
-    if (noToken) {
-      pane.createDiv({ text: 'An API token is required.' });
-      const tokenButton = pane.createEl('button', {
-        text: 'Setup Trello',
-        attr: { type: 'button' }
-      });
-      tokenButton.addEventListener('click', () => {
-        this.plugin.openTrelloSettings();
-      });
+    if (error === null || error === PluginError.NoToken) {
+      pane.createEl('h2', { text: 'No Trello card connected.' });
+      if (error === PluginError.NoToken) {
+        pane.createDiv({ text: 'An API token is required.' });
+        const tokenButton = pane.createEl('button', {
+          text: 'Setup Trello',
+          attr: { type: 'button' }
+        });
+        tokenButton.addEventListener('click', () => {
+          this.plugin.openTrelloSettings();
+        });
+      } else {
+        const connectButton = pane.createEl('button', {
+          text: 'Connect Trello Card',
+          attr: { type: 'button' }
+        });
+        connectButton.addEventListener('click', () => {
+          this.plugin.connectTrelloCard();
+        });
+      }
     } else {
-      const connectButton = pane.createEl('button', {
-        text: 'Connect Trello Card',
-        attr: { type: 'button' }
-      });
-      connectButton.addEventListener('click', () => {
-        this.plugin.connectTrelloCard();
-      });
+      pane.createEl('h2', { text: 'Could not reach Trello API.' });
+      if (error === PluginError.RateLimit) {
+        pane.createDiv({ text: TRELLO_ERRORS.rateLimit });
+      } else if (error === PluginError.Unauthorized) {
+        pane.createDiv({ text: TRELLO_ERRORS.unauthorized });
+        const tokenButton = pane.createEl('button', {
+          text: 'Setup Trello',
+          attr: { type: 'button' }
+        });
+        tokenButton.addEventListener('click', () => {
+          this.plugin.openTrelloSettings();
+        });
+      } else {
+        pane.createDiv({ text: TRELLO_ERRORS.other });
+      }
     }
   }
 
@@ -105,7 +218,6 @@ export class TrelloView extends ItemView {
     const header = parent.createDiv('nav-header');
     const buttons = header.createDiv('nav-buttons-container');
     this.renderNavButton(buttons, 'Refresh card', 'reset', () => {
-      this.bypassCache = true;
       this.update.next();
     });
     this.renderNavButton(buttons, 'Link another card', 'link', () => {
@@ -132,17 +244,21 @@ export class TrelloView extends ItemView {
     setIcon(cardLink, 'navigate-glyph', 24);
 
     const descContainer = parent.createDiv('trello-card-desc--container');
-    const collapseButton = descContainer.createEl('button', { text: 'Description', cls: 'trello-card-desc--collapse' });
+    const collapseButton = descContainer.createEl('a', {
+      text: 'Description',
+      cls: 'trello-card-desc--collapse',
+      href: '#'
+    });
     const collapseIcon = collapseButton.createSpan('trello-card-desc--collapse-icon');
-    setIcon(collapseIcon, 'up-chevron-glyph');
+    setIcon(collapseIcon, 'down-chevron-glyph');
     const description = descContainer.createDiv({ text: card.desc, cls: 'trello-card-desc--desc' });
     collapseButton.addEventListener('click', () => {
       if (description.style.maxHeight) {
         description.style.maxHeight = '';
-        setIcon(collapseIcon, 'up-chevron-glyph');
+        setIcon(collapseIcon, 'down-chevron-glyph');
       } else {
         description.style.maxHeight = description.scrollHeight + 'px';
-        setIcon(collapseIcon, 'down-chevron-glyph');
+        setIcon(collapseIcon, 'up-chevron-glyph');
       }
     });
   }
@@ -188,7 +304,6 @@ export class TrelloView extends ItemView {
             })
           )
           .subscribe(() => {
-            this.bypassCache = true;
             this.update.next();
             new Notice('Added comment.');
           });
@@ -226,5 +341,25 @@ export class TrelloView extends ItemView {
     });
     setIcon(button, icon);
     button.addEventListener('click', callback);
+  }
+
+  private getWorstError(errors: Array<PluginError | null>): PluginError | null {
+    let worstError: PluginError | null = null;
+    errors.forEach((err) => {
+      switch (worstError) {
+        case null:
+        case PluginError.NoToken:
+          if (err !== null) {
+            worstError = err;
+          }
+          break;
+        case PluginError.RateLimit:
+          if (err === PluginError.Unauthorized) {
+            worstError = err;
+          }
+          break;
+      }
+    });
+    return worstError;
   }
 }

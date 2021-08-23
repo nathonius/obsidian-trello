@@ -19,6 +19,7 @@
     "prettier": "^2.3.2",
     "rollup": "^2.32.1",
     "rollup-plugin-scss": "^3.0.0",
+    "rollup-plugin-terser": "^7.0.2",
     "sass": "^1.38.0",
     "tslib": "^2.2.0",
     "typescript": "^4.2.4"

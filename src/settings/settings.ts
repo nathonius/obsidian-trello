@@ -36,7 +36,7 @@ export class TrelloSettings extends PluginSettingTab {
           .setPlaceholder('Enter token')
           .setValue(settings.token)
           .onChange(async (value: string) => {
-            await this.plugin.state.updateSetting('token', value);
+            await this.plugin.state.updateSetting('token', value.trim());
           });
       });
   }
