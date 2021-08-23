@@ -10,6 +10,12 @@ The connection is through a YAML frontmatter key.
 
 ## Setup
 
+### Prerequisites
+
+1. A Trello account
+2. The [MetaEdit](https://github.com/chhoumann/MetaEdit) Obsidian plugin (install from inside Obsidian)
+3. A Trello API token (see below).
+
 Before you can connect a Trello card, you need to create an API token and set it in the plugin settings. You can create a token [here][tokenurl]; make sure to copy it before closing the tab.
 
 Tokens can be revoked at any time in your Trello account settings.
