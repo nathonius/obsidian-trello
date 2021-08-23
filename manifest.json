@@ -3,7 +3,7 @@
   "name": "Obsidian Trello",
   "version": "1.0.0",
   "minAppVersion": "0.9.12",
-  "description": "This is a sample plugin for Obsidian. This plugin demonstrates some of the capabilities of the Obsidian API.",
+  "description": "Connect a single Trello card to an Obsidian note. Once connected, see basic info, and add and view comments.",
   "author": "Obsidian",
   "authorUrl": "https://obsidian.md/about",
   "isDesktopOnly": false
