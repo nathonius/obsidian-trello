@@ -39,7 +39,7 @@ export class BoardSelectModal extends Modal {
 
         // Add save/cancel
         const controls = this.contentEl.createDiv('trello-board-select--controls');
-        const saveButton = controls.createEl('button', { text: 'Save' });
+        const saveButton = controls.createEl('button', { text: 'Save', cls: 'mod-cta' });
         saveButton.addEventListener('click', () => {
           this.onSave();
         });
