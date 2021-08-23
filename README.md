@@ -28,6 +28,10 @@ Tokens can be revoked at any time in your Trello account settings.
 
 **Disconnect Trello card** - Remove the Trello connection from a note.
 
+## Contributing
+
+Pull requests are always welcome. Keep in mind that this plugin makes heavy use of [rxjs](https://www.learnrxjs.io/) for reactive state management.
+
 ## Support
 
 Feel free to contact me on the Obsidian discord, @OfficerHalf.
