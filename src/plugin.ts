@@ -17,7 +17,7 @@ import {
 import { TrelloSettings } from './settings';
 import { PluginState } from './state';
 import { CardSuggestModal, BoardSuggestModal } from './suggest';
-import { TrelloView } from './view';
+import { TrelloView } from './view/view';
 
 export class TrelloPlugin extends Plugin {
   api!: TrelloAPI;
@@ -70,6 +70,10 @@ export class TrelloPlugin extends Plugin {
       )
       .subscribe((token) => {
         this.currentToken.next(token);
+
+        if (token) {
+          this.handleFile(this.app.workspace.getActiveFile());
+        }
       });
 
     // Register trello view type

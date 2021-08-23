@@ -1,134 +1,25 @@
 import { ItemView, Notice, setIcon, WorkspaceLeaf } from 'obsidian';
-import { BehaviorSubject, combineLatest, forkJoin, of, Subject, throwError } from 'rxjs';
-import { catchError, concatMap, filter, finalize, mergeMap, switchMap, takeUntil, tap } from 'rxjs/operators';
-import { CUSTOM_ICONS, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from './constants';
-import { PluginError, TrelloAction, TrelloCard, TrelloList } from './interfaces';
-import { TrelloPlugin } from './plugin';
+import { combineLatest, Subject } from 'rxjs';
+import { takeUntil, tap } from 'rxjs/operators';
+import { CUSTOM_ICONS, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from '../constants';
+import { PluginError, TrelloAction, TrelloCard, TrelloList } from '../interfaces';
+import { TrelloPlugin } from '../plugin';
+import { TrelloViewManager } from './view-manager';
 
 export class TrelloView extends ItemView {
-  // Cache bust
-  private bypassActionCache = false;
-  private bypassListCache = false;
-
-  // Error handling
-  private cardError: PluginError | null = null;
-  private actionsError: PluginError | null = null;
-  private listError: PluginError | null = null;
-
-  // Data
-  private readonly currentCard = new BehaviorSubject<TrelloCard | null>(null);
-  private readonly currentActions = new BehaviorSubject<TrelloAction[] | null>(null);
-  private readonly currentList = new BehaviorSubject<TrelloList | null>(null);
-
-  // Flow control
   private readonly destroy = new Subject<void>();
   private readonly update = new Subject<void>();
+  private readonly viewManager = new TrelloViewManager(this.plugin, this.destroy, this.update);
+
   constructor(private readonly plugin: TrelloPlugin, leaf: WorkspaceLeaf) {
     super(leaf);
 
-    // Update card
-    this.plugin.boardCardId
-      .pipe(
-        takeUntil(this.destroy),
-        tap((boardCard) => {
-          if (!boardCard) {
-            this.cardError = null;
-            this.actionsError = null;
-            this.listError = null;
-            this.currentCard.next(null);
-            this.currentActions.next(null);
-            this.currentList.next(null);
-          }
-        }),
-        filter((boardCard) => boardCard !== null && boardCard !== ''),
-        switchMap((boardCard) => {
-          const [boardId, cardId] = boardCard!.split(';');
-          return this.plugin.api.getCardFromBoard(boardId, cardId);
-        })
-      )
-      .subscribe({
-        next: (card) => {
-          if (this.currentCard.value !== null && this.currentCard.value.id !== card.id) {
-            this.currentActions.next(null);
-            this.currentList.next(null);
-          }
-          this.cardError = null;
-          this.currentCard.next(card);
-        },
-        error: (err: PluginError) => {
-          this.cardError = err;
-          this.currentCard.next(null);
-        }
-      });
-
-    // Update actions
-    this.currentCard
-      .pipe(
-        takeUntil(this.destroy),
-        filter((card) => card !== null),
-        switchMap((card) => this.plugin.api.getActionsFromCard(card!.id, undefined, this.bypassActionCache)),
-        finalize(() => {
-          this.bypassActionCache = false;
-        })
-      )
-      .subscribe({
-        next: (actions) => {
-          this.actionsError = null;
-          this.currentActions.next(actions);
-        },
-        error: (err: PluginError) => {
-          this.actionsError = err;
-          this.currentActions.next(null);
-        }
-      });
-
-    // Update list
-    this.currentCard
-      .pipe(
-        takeUntil(this.destroy),
-        filter((card) => card !== null),
-        switchMap((card) => this.plugin.api.getList(card!.idList, this.bypassListCache)),
-        finalize(() => {
-          this.bypassListCache = false;
-        })
-      )
-      .subscribe({
-        next: (list) => {
-          this.listError = null;
-          this.currentList.next(list);
-        },
-        error: (err: PluginError) => {
-          this.listError = err;
-          this.currentList.next(null);
-        }
-      });
-
-    // Refresh data
-    this.update
-      .pipe(
-        takeUntil(this.destroy),
-        filter(() => this.currentCard.value !== null),
-        tap(() => {
-          this.bypassActionCache = true;
-          this.bypassListCache = true;
-        }),
-        switchMap(() => {
-          const card = this.currentCard.value!;
-          return this.plugin.api.getCardFromBoard(card.idBoard, card.id, true);
-        })
-      )
-      .subscribe((card) => {
-        if (card) {
-          this.currentCard.next(card);
-        }
-      });
-
-    // Render
-    combineLatest([this.currentCard, this.currentActions, this.currentList])
+    // Re-render whenever state changes
+    combineLatest([this.viewManager.currentCard, this.viewManager.currentActions, this.viewManager.currentList])
       .pipe(takeUntil(this.destroy))
       .subscribe(([card, actions, list]) => {
         this.contentEl.empty();
-        const errors = [this.cardError, this.actionsError, this.listError];
+        const errors = [this.viewManager.cardError, this.viewManager.actionsError, this.viewManager.listError];
         if (errors.some((err) => err !== null)) {
           this.renderEmptyView(this.getWorstError(errors));
         } else if (card === null) {
@@ -160,6 +51,9 @@ export class TrelloView extends ItemView {
     return this.contentEl.createDiv('trello-pane--container');
   }
 
+  /**
+   * Renders a view for when there is no token, no card, or any errors occurred.
+   */
   private renderEmptyView(error: PluginError | null) {
     const pane = this.renderPaneContainer();
     if (error === null || error === PluginError.NoToken) {
@@ -201,6 +95,9 @@ export class TrelloView extends ItemView {
     }
   }
 
+  /**
+   * After getting all data, render it into a usable form.
+   */
   private renderConnectedView(card: TrelloCard, actions: TrelloAction[] | null, list: TrelloList | null): void {
     this.renderHeader(this.contentEl);
     const pane = this.renderPaneContainer();
@@ -214,6 +111,9 @@ export class TrelloView extends ItemView {
     this.renderCommentSection(card, actions, commentSectionContainer);
   }
 
+  /**
+   * Renders the controls above the card info.
+   */
   private renderHeader(parent: HTMLElement): void {
     const header = parent.createDiv('nav-header');
     const buttons = header.createDiv('nav-buttons-container');
@@ -228,6 +128,9 @@ export class TrelloView extends ItemView {
     });
   }
 
+  /**
+   * Renders the name of the list and card as well as card description.
+   */
   private renderCardInfo(card: TrelloCard, list: TrelloList | null, parent: HTMLElement): void {
     if (list) {
       const listName = parent.createDiv({
@@ -263,6 +166,9 @@ export class TrelloView extends ItemView {
     });
   }
 
+  /**
+   * Render the colored labels.
+   */
   private renderLabels(card: TrelloCard, parent: HTMLElement): void {
     card.labels.forEach((label) => {
       if (label.color) {
@@ -274,6 +180,9 @@ export class TrelloView extends ItemView {
     });
   }
 
+  /**
+   * Renders the comment section and input to add new comments.
+   */
   private renderCommentSection(card: TrelloCard, comments: TrelloAction[] | null, parent: HTMLElement): void {
     const container = parent.createDiv('trello-comment-input--container');
 
@@ -316,6 +225,9 @@ export class TrelloView extends ItemView {
     }
   }
 
+  /**
+   * Render an individual comment.
+   */
   private renderComment(comment: TrelloAction, parent: HTMLElement): void {
     const commentContainer = parent.createDiv('trello-comment--container');
     const commentMetadata = commentContainer.createDiv('trello-comment--metadata');
@@ -334,6 +246,9 @@ export class TrelloView extends ItemView {
     });
   }
 
+  /**
+   * Render a specific header button.
+   */
   private renderNavButton(parent: HTMLElement, label: string, icon: string, callback: () => any) {
     const button = parent.createDiv({
       cls: 'nav-action-button',
@@ -343,6 +258,14 @@ export class TrelloView extends ItemView {
     button.addEventListener('click', callback);
   }
 
+  /**
+   * Returns the worst error of the given errors.
+   * Error heirarchy is (worst to best):
+   * 1. Rate limit
+   * 2. Unauthorized
+   * 3. Unknown
+   * 4. No token
+   */
   private getWorstError(errors: Array<PluginError | null>): PluginError | null {
     let worstError: PluginError | null = null;
     errors.forEach((err) => {
