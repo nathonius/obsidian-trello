@@ -1,9 +1,9 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import { take } from 'rxjs/operators';
-import { TRELLO_TOKEN_URL } from '../constants';
-import { LeafSide, PluginSettings } from '../interfaces';
-import { TrelloPlugin } from '../plugin';
-import { BoardSelectModal } from './board-select-modal';
+import { TRELLO_TOKEN_URL } from './constants';
+import { LeafSide, PluginSettings } from './interfaces';
+import { TrelloPlugin } from './plugin';
+import { BoardSelectModal } from './modal/board-select-modal';
 
 export class TrelloSettings extends PluginSettingTab {
   private readonly boardSelectModal = new BoardSelectModal(this.plugin, this.plugin.app);

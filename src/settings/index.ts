@@ -1,1 +1,0 @@
-export { TrelloSettings } from './settings';

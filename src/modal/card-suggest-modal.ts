@@ -1,5 +1,6 @@
 import { App, SuggestModal } from 'obsidian';
 import { Subject } from 'rxjs';
+import { NEW_TRELLO_CARD } from '../constants';
 import { TrelloCard } from '../interfaces';
 
 export class CardSuggestModal extends SuggestModal<TrelloCard> {
@@ -12,7 +13,7 @@ export class CardSuggestModal extends SuggestModal<TrelloCard> {
 
   getSuggestions(query: string): TrelloCard[] {
     const term = query.toLowerCase();
-    return this.cards.filter((card) => card.name.toLowerCase().includes(term));
+    return [NEW_TRELLO_CARD, ...this.cards.filter((card) => card.name.toLowerCase().includes(term))];
   }
 
   renderSuggestion(value: TrelloCard, el: HTMLElement): void {

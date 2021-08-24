@@ -1,4 +1,4 @@
-import { LeafSide, PluginData, PluginSettings } from './interfaces';
+import { LeafSide, PluginData, PluginSettings, TrelloCard } from './interfaces';
 
 export const CUSTOM_ICONS = {
   trello: {
@@ -35,3 +35,7 @@ export const DEFAULT_DATA: PluginData = {
 export enum MetaKey {
   BoardCard = 'trello_board_card_id'
 }
+
+export const NEW_TRELLO_CARD: TrelloCard = {
+  name: 'Create a new card...'
+} as TrelloCard;

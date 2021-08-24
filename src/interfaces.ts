@@ -299,3 +299,27 @@ export interface TrelloAction {
   //   username: 'officerhalf';
   // };
 }
+
+export enum CardPosition {
+  Top = 'top',
+  Bottom = 'bottom'
+}
+
+export interface NewCardRequest {
+  name?: string;
+  desc?: string;
+  pos?: CardPosition;
+  // due?: string;
+  // dueComplete?: boolean;
+  idList: string;
+  // idMembers: string[];
+  idLabels?: string[];
+  // urlSource?: string;
+  // fileSource?: string;
+  // mimeType?: string;
+  // idCardSource?: string;
+  // keepFromSource?: string;
+  // address?: string;
+  // locationName?: string;
+  // coordinates?: string;
+}

@@ -2,7 +2,15 @@ import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { ajax, AjaxError, AjaxResponse } from 'rxjs/ajax';
 import { map, takeUntil, tap, catchError } from 'rxjs/operators';
 import { TRELLO_API, TRELLO_API_KEY } from './constants';
-import { PluginError, TrelloAction, TrelloActionType, TrelloBoard, TrelloCard, TrelloList } from './interfaces';
+import {
+  NewCardRequest,
+  PluginError,
+  TrelloAction,
+  TrelloActionType,
+  TrelloBoard,
+  TrelloCard,
+  TrelloList
+} from './interfaces';
 import { TrelloPlugin } from './plugin';
 
 export class TrelloAPI {
@@ -186,11 +194,37 @@ export class TrelloAPI {
   }
 
   /**
+   * Add new card
+   */
+  addNewCard(request: NewCardRequest): Observable<AjaxResponse<TrelloCard>> {
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
+    let url = this.auth(`${TRELLO_API}/1/cards?idList=${request.idList}`);
+    // Add parameters
+    url = this.addQueryParam(url, 'idList', request.idList);
+    url = this.addQueryParam(url, 'name', request.name, true);
+    url = this.addQueryParam(url, 'desc', request.desc, true);
+    url = this.addQueryParam(url, 'pos', request.pos);
+    url = this.addQueryParam(url, 'idLabels', request.idLabels ? request.idLabels.join(',') : undefined);
+    return ajax<TrelloCard>({ url, method: 'POST', crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err))
+    );
+  }
+
+  /**
    * Add the API key and token query params to a given call.
    *
    */
   private auth(url: string): string {
     return `${url}${url.includes('?') ? '&' : '?'}key=${TRELLO_API_KEY}&token=${this.token.value}`;
+  }
+
+  private addQueryParam(url: string, key: string, value: string | undefined, encode = false) {
+    if (value) {
+      return `${url}${url.includes('?') ? '&' : '?'}${key}=${encode ? encodeURIComponent(value) : value}`;
+    }
+    return url;
   }
 
   private handleAPIError(err: any): Observable<never> {

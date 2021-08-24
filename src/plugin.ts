@@ -1,12 +1,12 @@
 import { FileView, Notice, Plugin, addIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import { BehaviorSubject, from, iif, Observable, of, Subject } from 'rxjs';
 import { take, map, concatMap, tap, takeUntil } from 'rxjs/operators';
-import { CUSTOM_ICONS, DEFAULT_DATA, MetaKey, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from './constants';
+import { CUSTOM_ICONS, DEFAULT_DATA, MetaKey, NEW_TRELLO_CARD, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from './constants';
 import { LeafSide, MetaEditApi, PluginData, TrelloAction, TrelloCard, TrelloItemCache, TrelloList } from './interfaces';
 import { TrelloAPI } from './api';
 import { TrelloSettings } from './settings';
 import { PluginState } from './state';
-import { CardSuggestModal, BoardSuggestModal } from './suggest';
+import { CardSuggestModal, BoardSuggestModal } from './modal';
 import { TrelloView } from './view/view';
 
 export class TrelloPlugin extends Plugin {
@@ -180,6 +180,7 @@ export class TrelloPlugin extends Plugin {
             return this.cardSuggestModal.selectedCard;
           }),
           take(1),
+          concatMap((selected) => iif(() => selected === NEW_TRELLO_CARD)),
           map((selected) => `${selected.idBoard};${selected.id}`),
           tap((boardCardId) => {
             this.boardCardId.next(boardCardId);
@@ -209,6 +210,8 @@ export class TrelloPlugin extends Plugin {
       });
     }
   }
+
+  addNewCard(): void {}
 
   /**
    * Adds the trello leaf if not already available
