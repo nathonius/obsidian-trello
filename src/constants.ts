@@ -37,5 +37,6 @@ export enum MetaKey {
 }
 
 export const NEW_TRELLO_CARD: TrelloCard = {
-  name: 'Create a new card...'
+  name: 'Create a new card...',
+  id: 'CREATE_NEW_TRELLO_CARD'
 } as TrelloCard;

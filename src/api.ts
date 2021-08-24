@@ -9,6 +9,7 @@ import {
   TrelloActionType,
   TrelloBoard,
   TrelloCard,
+  TrelloLabel,
   TrelloList
 } from './interfaces';
 import { TrelloPlugin } from './plugin';
@@ -75,6 +76,58 @@ export class TrelloAPI {
             item: card,
             timestamp: new Date()
           };
+        }
+      })
+    );
+  }
+
+  /**
+   * Get all labels for a given board.
+   * This uses the cache if possible.
+   */
+  getLabelsFromBoard(boardId: string, bypassCache = false, cacheExpireMs = 600000): Observable<TrelloLabel[]> {
+    const cached = this.plugin.labelCache[boardId];
+    if (!cached || bypassCache || new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs) {
+      return this._getLabelsFromBoard(boardId);
+    }
+    return of(cached.item);
+  }
+
+  /**
+   * Get all labels for a given board.
+   * This updates the cache.
+   */
+  private _getLabelsFromBoard(boardId: string): Observable<TrelloLabel[]> {
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
+    const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/labels`);
+    return ajax<TrelloLabel[]>({ url, crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err)),
+      map((resp) => resp.response),
+      tap((labels) => {
+        this.plugin.labelCache[boardId] = { item: labels, timestamp: new Date() };
+      })
+    );
+  }
+
+  /**
+   * Get all lists for the given board.
+   * This is not cached, but updates the cache.
+   */
+  getListsFromBoard(boardId: string): Observable<TrelloList[]> {
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
+    const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/lists`);
+    return ajax<TrelloList[]>({ url, crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err)),
+      map((resp) => resp.response),
+      tap((lists) => {
+        if (lists && lists.length > 0) {
+          lists.forEach((list) => {
+            this.plugin.listCache[list.id] = { item: list, timestamp: new Date() };
+          });
         }
       })
     );

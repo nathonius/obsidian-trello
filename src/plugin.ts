@@ -1,12 +1,22 @@
 import { FileView, Notice, Plugin, addIcon, TFile, WorkspaceLeaf } from 'obsidian';
-import { BehaviorSubject, from, iif, Observable, of, Subject } from 'rxjs';
+import { BehaviorSubject, forkJoin, from, iif, Observable, of, Subject } from 'rxjs';
 import { take, map, concatMap, tap, takeUntil } from 'rxjs/operators';
 import { CUSTOM_ICONS, DEFAULT_DATA, MetaKey, NEW_TRELLO_CARD, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from './constants';
-import { LeafSide, MetaEditApi, PluginData, TrelloAction, TrelloCard, TrelloItemCache, TrelloList } from './interfaces';
+import {
+  LeafSide,
+  MetaEditApi,
+  PluginData,
+  TrelloAction,
+  TrelloBoard,
+  TrelloCard,
+  TrelloItemCache,
+  TrelloLabel,
+  TrelloList
+} from './interfaces';
 import { TrelloAPI } from './api';
 import { TrelloSettings } from './settings';
 import { PluginState } from './state';
-import { CardSuggestModal, BoardSuggestModal } from './modal';
+import { CardSuggestModal, BoardSuggestModal, CardCreateModal, ListSuggestModal } from './modal';
 import { TrelloView } from './view/view';
 
 export class TrelloPlugin extends Plugin {
@@ -15,10 +25,13 @@ export class TrelloPlugin extends Plugin {
   view!: TrelloView;
   destroy = new Subject<void>();
   readonly boardSuggestModal = new BoardSuggestModal(this.app);
+  readonly listSuggestModal = new ListSuggestModal(this.app);
   readonly cardSuggestModal = new CardSuggestModal(this.app);
+  readonly cardCreateModal = new CardCreateModal(this.app);
   readonly cardCache: TrelloItemCache<TrelloCard> = {};
   readonly cardActionsCache: TrelloItemCache<TrelloAction[]> = {};
   readonly listCache: TrelloItemCache<TrelloList> = {};
+  readonly labelCache: TrelloItemCache<TrelloLabel[]> = {};
   readonly boardCardId = new BehaviorSubject<string | null>(null);
   readonly currentToken = new BehaviorSubject<string>('');
 
@@ -157,6 +170,9 @@ export class TrelloPlugin extends Plugin {
   connectTrelloCard(): void {
     const view = this.app.workspace.activeLeaf?.view;
 
+    // Might need this later
+    let board: TrelloBoard;
+
     if (view instanceof FileView && this.metaEditAvailable) {
       this.state.settings
         .pipe(
@@ -171,8 +187,11 @@ export class TrelloPlugin extends Plugin {
             return this.boardSuggestModal.selectedBoard;
           }),
           take(1),
+          tap((selectedBoard) => {
+            board = selectedBoard;
+          }),
           // Get available cards from selected board
-          concatMap((selected) => this.api.getCardsFromBoard(selected.id)),
+          concatMap((selectedBoard) => this.api.getCardsFromBoard(selectedBoard.id)),
           // Open card suggestion modal
           concatMap((cards) => {
             this.cardSuggestModal.cards = cards;
@@ -180,7 +199,9 @@ export class TrelloPlugin extends Plugin {
             return this.cardSuggestModal.selectedCard;
           }),
           take(1),
-          concatMap((selected) => iif(() => selected === NEW_TRELLO_CARD)),
+          concatMap((selectedCard) =>
+            iif(() => selectedCard === NEW_TRELLO_CARD, this.addNewCard(board), of(selectedCard))
+          ),
           map((selected) => `${selected.idBoard};${selected.id}`),
           tap((boardCardId) => {
             this.boardCardId.next(boardCardId);
@@ -211,7 +232,31 @@ export class TrelloPlugin extends Plugin {
     }
   }
 
-  addNewCard(): void {}
+  /**
+   * Has the user select a list from the already selected board,
+   * then opens the card creation modal. Returns the newly created
+   * card.
+   */
+  addNewCard(board: TrelloBoard): Observable<TrelloCard> {
+    return forkJoin({
+      labels: this.api.getLabelsFromBoard(board.id),
+      list: this.api.getListsFromBoard(board.id).pipe(
+        concatMap((lists) => {
+          this.listSuggestModal.lists = lists;
+          this.listSuggestModal.open();
+          return this.listSuggestModal.selectedList;
+        })
+      )
+    }).pipe(
+      concatMap(({ labels, list }) => {
+        this.cardCreateModal.board = board;
+        this.cardCreateModal.list = list;
+        this.cardCreateModal.labels = labels;
+        this.cardCreateModal.open();
+        return this.cardCreateModal.createdCard;
+      })
+    );
+  }
 
   /**
    * Adds the trello leaf if not already available

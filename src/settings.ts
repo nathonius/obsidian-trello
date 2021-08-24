@@ -3,7 +3,7 @@ import { take } from 'rxjs/operators';
 import { TRELLO_TOKEN_URL } from './constants';
 import { LeafSide, PluginSettings } from './interfaces';
 import { TrelloPlugin } from './plugin';
-import { BoardSelectModal } from './modal/board-select-modal';
+import { BoardSelectModal } from './modal';
 
 export class TrelloSettings extends PluginSettingTab {
   private readonly boardSelectModal = new BoardSelectModal(this.plugin, this.plugin.app);
