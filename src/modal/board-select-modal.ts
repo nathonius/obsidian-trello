@@ -52,7 +52,7 @@ export class BoardSelectModal extends Modal {
       },
       error: () => {
         // Show a button to go to settings if no token is set.
-        if (!this.plugin.currentToken.value || this.plugin.currentToken.value === '') {
+        if (!this.plugin.state.currentToken.value || this.plugin.state.currentToken.value === '') {
           const container = this.contentEl.createDiv({
             cls: 'trello-board-select--empty-state',
             text: 'An API token is required.'

@@ -1,11 +1,12 @@
 import { FileView, Notice, Plugin, addIcon, TFile, WorkspaceLeaf } from 'obsidian';
-import { BehaviorSubject, forkJoin, from, iif, Observable, of, Subject } from 'rxjs';
+import { BehaviorSubject, forkJoin, from, iif, Observable, of, Subject, throwError } from 'rxjs';
 import { take, map, concatMap, tap, takeUntil } from 'rxjs/operators';
 import { CUSTOM_ICONS, DEFAULT_DATA, MetaKey, NEW_TRELLO_CARD, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from './constants';
 import {
   LeafSide,
   MetaEditApi,
   PluginData,
+  PluginError,
   TrelloAction,
   TrelloBoard,
   TrelloCard,
@@ -28,12 +29,6 @@ export class TrelloPlugin extends Plugin {
   readonly listSuggestModal = new ListSuggestModal(this.app);
   readonly cardSuggestModal = new CardSuggestModal(this.app);
   readonly cardCreateModal = new CardCreateModal(this.app);
-  readonly cardCache: TrelloItemCache<TrelloCard> = {};
-  readonly cardActionsCache: TrelloItemCache<TrelloAction[]> = {};
-  readonly listCache: TrelloItemCache<TrelloList> = {};
-  readonly labelCache: TrelloItemCache<TrelloLabel[]> = {};
-  readonly boardCardId = new BehaviorSubject<string | null>(null);
-  readonly currentToken = new BehaviorSubject<string>('');
 
   get metaEditAvailable(): boolean {
     const available = !!(this.app as any).plugins.plugins['metaedit'];
@@ -72,7 +67,7 @@ export class TrelloPlugin extends Plugin {
         map((s) => s.token)
       )
       .subscribe((token) => {
-        this.currentToken.next(token);
+        this.state.currentToken.next(token);
       });
 
     // Register trello view type
@@ -138,12 +133,12 @@ export class TrelloPlugin extends Plugin {
     }
     const existing = await this.metaEdit.getPropertyValue(MetaKey.BoardCard, file);
     if (!existing) {
-      this.boardCardId.next(null);
+      this.state.boardCardId.next(null);
       return;
     }
 
     // This file is trello connected
-    this.boardCardId.next(existing);
+    this.state.boardCardId.next(existing);
   }
 
   /**
@@ -182,9 +177,9 @@ export class TrelloPlugin extends Plugin {
           concatMap((boards) => iif(() => boards.length > 0, of(boards), this.api.getBoards())),
           // Open board suggestion modal
           concatMap((boards) => {
-            this.boardSuggestModal.boards = boards;
+            this.boardSuggestModal.options = boards;
             this.boardSuggestModal.open();
-            return this.boardSuggestModal.selectedBoard;
+            return this.boardSuggestModal.selected;
           }),
           take(1),
           tap((selectedBoard) => {
@@ -194,9 +189,9 @@ export class TrelloPlugin extends Plugin {
           concatMap((selectedBoard) => this.api.getCardsFromBoard(selectedBoard.id)),
           // Open card suggestion modal
           concatMap((cards) => {
-            this.cardSuggestModal.cards = cards;
+            this.cardSuggestModal.options = cards;
             this.cardSuggestModal.open();
-            return this.cardSuggestModal.selectedCard;
+            return this.cardSuggestModal.selected;
           }),
           take(1),
           concatMap((selectedCard) =>
@@ -204,13 +199,20 @@ export class TrelloPlugin extends Plugin {
           ),
           map((selected) => `${selected.idBoard};${selected.id}`),
           tap((boardCardId) => {
-            this.boardCardId.next(boardCardId);
+            this.state.boardCardId.next(boardCardId);
           }),
           concatMap((boardCardId) => this.updateOrCreateMeta(MetaKey.BoardCard, boardCardId, view.file))
         )
         .subscribe({
           next: () => {
             this.revealTrelloLeaf(true);
+          },
+          error: (err) => {
+            if (err === PluginError.Abort) {
+              console.log('ABORTING');
+              return;
+            }
+            throw err;
           }
         });
     }
@@ -226,7 +228,7 @@ export class TrelloPlugin extends Plugin {
       from(this.metaEdit.getPropertyValue(MetaKey.BoardCard, view.file)).subscribe((existing) => {
         if (existing) {
           this.metaEdit.deleteProperty(MetaKey.BoardCard, view.file);
-          this.boardCardId.next(null);
+          this.state.boardCardId.next(null);
         }
       });
     }
@@ -237,15 +239,16 @@ export class TrelloPlugin extends Plugin {
    * then opens the card creation modal. Returns the newly created
    * card.
    */
-  addNewCard(board: TrelloBoard): Observable<TrelloCard> {
+  private addNewCard(board: TrelloBoard): Observable<TrelloCard> {
     return forkJoin({
       labels: this.api.getLabelsFromBoard(board.id),
       list: this.api.getListsFromBoard(board.id).pipe(
         concatMap((lists) => {
-          this.listSuggestModal.lists = lists;
+          this.listSuggestModal.options = lists;
           this.listSuggestModal.open();
-          return this.listSuggestModal.selectedList;
-        })
+          return this.listSuggestModal.selected;
+        }),
+        take(1)
       )
     }).pipe(
       concatMap(({ labels, list }) => {
@@ -254,7 +257,8 @@ export class TrelloPlugin extends Plugin {
         this.cardCreateModal.labels = labels;
         this.cardCreateModal.open();
         return this.cardCreateModal.createdCard;
-      })
+      }),
+      take(1)
     );
   }
 

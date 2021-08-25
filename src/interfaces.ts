@@ -16,7 +16,8 @@ export enum PluginError {
   NoToken = 'NoToken',
   Unauthorized = 'Unauthorized',
   RateLimit = 'RateLimit',
-  Unknown = 'Unknown'
+  Unknown = 'Unknown',
+  Abort = 'Abort'
 }
 
 export enum LeafSide {

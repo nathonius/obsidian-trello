@@ -27,7 +27,7 @@ export class TrelloViewManager {
     private readonly update: Observable<void>
   ) {
     // Update card when the current ID changes
-    this.plugin.boardCardId
+    this.plugin.state.boardCardId
       .pipe(
         takeUntil(this.destroy),
         tap((boardCard) => {

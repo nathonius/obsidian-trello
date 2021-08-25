@@ -1,9 +1,23 @@
 import { BehaviorSubject, map, Observable, takeUntil } from 'rxjs';
-import { PluginData, PluginSettings } from './interfaces';
+import {
+  PluginData,
+  PluginSettings,
+  TrelloAction,
+  TrelloCard,
+  TrelloItemCache,
+  TrelloLabel,
+  TrelloList
+} from './interfaces';
 import { TrelloPlugin } from './plugin';
 
 export class PluginState {
   private readonly data: BehaviorSubject<PluginData>;
+  readonly cardCache: TrelloItemCache<TrelloCard> = {};
+  readonly cardActionsCache: TrelloItemCache<TrelloAction[]> = {};
+  readonly listCache: TrelloItemCache<TrelloList> = {};
+  readonly labelCache: TrelloItemCache<TrelloLabel[]> = {};
+  readonly boardCardId = new BehaviorSubject<string | null>(null);
+  readonly currentToken = new BehaviorSubject<string>('');
 
   constructor(private readonly plugin: TrelloPlugin, data: PluginData) {
     // Initialize data
