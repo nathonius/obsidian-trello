@@ -20,8 +20,8 @@ export class CardCreateModal extends Modal {
     this.finishedCardCreation = false;
     this.contentEl.empty();
     const container = this.contentEl.createDiv();
-    container.createEl('input', { attr: { placeholder: 'Card name' } });
-    container.createEl('textarea', { attr: { placeholder: 'Card description' } });
+    const title = this.renderTitle(container);
+    const description = this.renderDescription(container);
     const toggleContainer = container.createDiv();
     this.labels.forEach((label) => {
       this.buildToggle(label, toggleContainer);
@@ -38,11 +38,30 @@ export class CardCreateModal extends Modal {
     }
   }
 
+  private renderTitle(parent: HTMLElement): HTMLInputElement {
+    return parent.createEl('input', { attr: { placeholder: 'Enter a title for this card...' } });
+  }
+
+  private renderDescription(parent: HTMLElement): HTMLTextAreaElement {
+    return parent.createEl('textarea', { attr: { placeholder: 'Add a more detailed description...' } });
+  }
+
+  private renderLabel(label: TrelloLabel, parent: HTMLElement): void {
+    const container = parent.createDiv('trello-card-create--label-container');
+    if (label.color) {
+      container.classList.add(`trello-color--${label.color}`);
+    }
+  }
+
   /**
    * Uses obsidian's toggle styling to create toggle switches for each label
    */
   private buildToggle(label: TrelloLabel, parent: HTMLElement): void {
     const container = parent.createDiv('trello-card-create--toggle-container');
+
+    if (label.color) {
+      container.classList.add(`trello-color--${label.color}`);
+    }
 
     container.createDiv({ text: label.name, cls: 'trello-card-create--toggle-label' });
     const toggle = container.createDiv({ cls: 'trello-card-create--toggle checkbox-container' });

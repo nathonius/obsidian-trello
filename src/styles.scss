@@ -1,46 +1,148 @@
+@use "sass:map";
+@use './view/view.scss';
+@use './modal/board-select-modal.scss';
+
 /* Trello Colors */
-:root {
-  --trello-green: #61bd4f;
-  --trello-yellow: #f2d600;
-  --trello-orange: #ff9f1a;
-  --trello-red: #eb5a46;
-  --trello-purple: #c377e0;
-  --trello-blue: #0079bf;
-  --trello-sky: #00c2e0;
-  --trello-lime: #51e898;
-  --trello-pink: #ff78cb;
-  --trello-black: #344563;
-}
+$trello-colors: (
+  'green': (
+    'base': #61bd4f,
+    'lighter': #81ca72,
+    'darker': #519839
+  ),
+  'yellow': (
+    'base': #f2d600,
+    'lighter': #f4de33,
+    'darker': #d9b51c
+  ),
+  'orange': (
+    'base': #ff9f1a,
+    'lighter': #ffb248,
+    'darker': #cd8313
+  ),
+  'red': (
+    'base': #eb5a46,
+    'lighter': #ef7b6b,
+    'darker': #b04632
+  ),
+  'purple': (
+    'base': #c377e0,
+    'lighter': #cf92e6,
+    'darker': #89609e
+  ),
+  'blue': (
+    'base': #0079bf,
+    'lighter': #3394cc,
+    'darker': #055a8c
+  ),
+  'sky': (
+    'base': #00c2e0,
+    'lighter': #33cee6,
+    'darker': #0098b7
+  ),
+  'lime': (
+    'base': #51e898,
+    'lighter': #74edad,
+    'darker': #4bbf6b
+  ),
+  'pink': (
+    'base': #ff78cb,
+    'lighter': #ff93d5,
+    'darker': #c9558f
+  ),
+  'black': (
+    'base': #344563,
+    'lighter': #5d6a82,
+    'darker': #091e42
+  ),
+  'grey': (
+    'base': #b3bac5,
+    'lighter': #c2c8d1,
+    'darker': #97a0af
+  )
+);
 
 .trello-color {
-  &--green {
-    background-color: var(--trello-green);
-  }
-  &--yellow {
-    background-color: var(--trello-yellow);
-  }
-  &--orange {
-    background-color: var(--trello-orange);
-  }
-  &--red {
-    background-color: var(--trello-red);
-  }
-  &--purple {
-    background-color: var(--trello-purple);
-  }
-  &--blue {
-    background-color: var(--trello-blue);
-  }
-  &--sky {
-    background-color: var(--trello-sky);
-  }
-  &--lime {
-    background-color: var(--trello-lime);
-  }
-  &--pink {
-    background-color: var(--trello-pink);
-  }
-  &--black {
-    background-color: var(--trello-black);
+  @each $name, $color in $trello-colors {
+    &--#{$name} {
+      background-color: map.get($color, base);
+    }
+    &--#{name}-lighter {
+      background-color: map.get($color, lighter);
+    }
+    &--#{name}-darker {
+      background-color: map.get($color, darker);
+    }
   }
 }
+
+// :root {
+//   --trello-green: #61bd4f;
+//   --trello-green-lighter: #81ca72;
+//   --trello-green-darker: #519839;
+//   --trello-yellow: #f2d600;
+//   --trello-yellow-lighter: #f4de33;
+//   --trello-yellow-darker: #d9b51c;
+//   --trello-orange: #ff9f1a;
+//   --trello-orange-lighter: #ffb248;
+//   --trello-orange-darker: #cd8313;
+//   --trello-red: #eb5a46;
+//   --trello-red-lighter: #ef7b6b;
+//   --trello-red-darker: #b04632;
+//   --trello-purple: #c377e0;
+//   --trello-purple-lighter: #cf92e6;
+//   --trello-purple-darker: #89609e;
+//   --trello-blue: #0079bf;
+//   --trello-blue-lighter: #3394cc;
+//   --trello-blue-darker: #055a8c;
+//   --trello-sky: #00c2e0;
+//   --trello-sky-lighter: #33cee6;
+//   --trello-sky-darker: #0098b7;
+//   --trello-lime: #51e898;
+//   --trello-lime-lighter: #74edad;
+//   --trello-lime-darker: #4bbf6b;
+//   --trello-pink: #ff78cb;
+//   --trello-pink-lighter: #ff93d5;
+//   --trello-pink-darker: #c9558f;
+//   --trello-black: #344563;
+//   --trello-black-lighter: #5d6a82;
+//   --trello-black-darker: #091e42;
+//   --trello-grey: #b3bac5;
+//   --trello-grey-lighter: #c2c8d1;
+//   --trello-grey-darker: #97a0af;
+// }
+
+// .trello-color {
+//   &--green {
+//     background-color: var(--trello-green);
+//   }
+//   &--yellow {
+//     background-color: var(--trello-yellow);
+//   }
+//   &--orange {
+//     background-color: var(--trello-orange);
+//   }
+//   &--red {
+//     background-color: var(--trello-red);
+//   }
+//   &--purple {
+//     background-color: var(--trello-purple);
+//   }
+//   &--blue {
+//     background-color: var(--trello-blue);
+//   }
+//   &--sky {
+//     background-color: var(--trello-sky);
+//   }
+//   &--lime {
+//     background-color: var(--trello-lime);
+//   }
+//   &--pink {
+//     background-color: var(--trello-pink);
+//   }
+//   &--black {
+//     background-color: var(--trello-black);
+//   }
+//   &--grey {
+//     background-color: var(--trello-grey);
+//   }
+// }

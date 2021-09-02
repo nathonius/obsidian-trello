@@ -209,7 +209,6 @@ export class TrelloPlugin extends Plugin {
           },
           error: (err) => {
             if (err === PluginError.Abort) {
-              console.log('ABORTING');
               return;
             }
             throw err;

@@ -5,8 +5,6 @@ import { TRELLO_ERRORS } from '../constants';
 import { TrelloBoard } from '../interfaces';
 import { TrelloPlugin } from '../plugin';
 
-import './board-select-modal.scss';
-
 export class BoardSelectModal extends Modal {
   private readonly selectedBoards = this.plugin.state.settings.pipe(
     take(1),

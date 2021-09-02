@@ -6,8 +6,6 @@ import { PluginError, TrelloAction, TrelloCard, TrelloList } from '../interfaces
 import { TrelloPlugin } from '../plugin';
 import { TrelloViewManager } from './view-manager';
 
-import './view.scss';
-
 export class TrelloView extends ItemView {
   private readonly destroy = new Subject<void>();
   private readonly update = new Subject<void>();
