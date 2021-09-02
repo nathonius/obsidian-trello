@@ -84,14 +84,14 @@ export class BoardSelectModal extends Modal {
     container.createDiv({ text: board.name, cls: 'trello-board-select--toggle-label' });
     const toggle = container.createDiv({ cls: 'trello-board-select--toggle checkbox-container' });
     if (this.newState[board.id]) {
-      toggle.classList.add('is-enabled');
+      toggle.addClass('is-enabled');
     }
     container.addEventListener('click', () => {
       if (this.newState[board.id]) {
-        toggle.classList.remove('is-enabled');
+        toggle.removeClass('is-enabled');
         delete this.newState[board.id];
       } else {
-        toggle.classList.add('is-enabled');
+        toggle.addClass('is-enabled');
         this.newState[board.id] = board;
       }
     });
