@@ -40,7 +40,8 @@ export class TrelloPlugin extends Plugin {
   async onload(): Promise<void> {
     // Set up data and default data.
     const savedData: PluginData | undefined = await this.loadData();
-    this.state = new PluginState(this, savedData || DEFAULT_DATA);
+    const data: PluginData = Object.assign({}, DEFAULT_DATA, savedData);
+    this.state = new PluginState(this, data);
 
     // Create new API instance
     this.api = new TrelloAPI(this);
@@ -65,8 +66,8 @@ export class TrelloPlugin extends Plugin {
     // Register trello view type
     this.registerView(TRELLO_VIEW_TYPE, (leaf: WorkspaceLeaf) => (this.view = new TrelloView(this, leaf)));
 
-    // Register file handler to check if the opened card is trello connected
-    this.app.workspace.on('file-open', async (file) => this.handleFile(file));
+    // Register file handler to check if the opened card is trello connected\
+    this.registerEvent(this.app.workspace.on('file-open', async (file) => this.handleFile(file)));
     // Also check the current file on load
     this.handleFile(this.app.workspace.getActiveFile());
 
