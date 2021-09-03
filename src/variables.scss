@@ -1,0 +1,38 @@
+/* Trello Colors */
+:root {
+  --trello-green: #61bd4f;
+  --trello-green-lighter: #81ca72;
+  --trello-green-darker: #519839;
+  --trello-yellow: #f2d600;
+  --trello-yellow-lighter: #f4de33;
+  --trello-yellow-darker: #d9b51c;
+  --trello-orange: #ff9f1a;
+  --trello-orange-lighter: #ffb248;
+  --trello-orange-darker: #cd8313;
+  --trello-red: #eb5a46;
+  --trello-red-lighter: #ef7b6b;
+  --trello-red-darker: #b04632;
+  --trello-purple: #c377e0;
+  --trello-purple-lighter: #cf92e6;
+  --trello-purple-darker: #89609e;
+  --trello-blue: #0079bf;
+  --trello-blue-lighter: #3394cc;
+  --trello-blue-darker: #055a8c;
+  --trello-sky: #00c2e0;
+  --trello-sky-lighter: #33cee6;
+  --trello-sky-darker: #0098b7;
+  --trello-lime: #51e898;
+  --trello-lime-lighter: #74edad;
+  --trello-lime-darker: #4bbf6b;
+  --trello-pink: #ff78cb;
+  --trello-pink-lighter: #ff93d5;
+  --trello-pink-darker: #c9558f;
+  --trello-black: #344563;
+  --trello-black-lighter: #5d6a82;
+  --trello-black-darker: #091e42;
+  --trello-grey: #b3bac5;
+  --trello-grey-lighter: #c2c8d1;
+  --trello-grey-darker: #97a0af;
+}
+
+$trello-colors: 'green', 'yellow', 'orange', 'red', 'purple', 'blue', 'sky', 'lime', 'pink', 'black', 'grey';

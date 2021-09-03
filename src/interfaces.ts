@@ -10,13 +10,16 @@ export interface PluginSettings {
   token: string;
   selectedBoards: TrelloBoard[];
   openToSide: LeafSide;
+  newCardPosition: CardPosition;
+  verboseLogging: boolean;
 }
 
 export enum PluginError {
   NoToken = 'NoToken',
   Unauthorized = 'Unauthorized',
   RateLimit = 'RateLimit',
-  Unknown = 'Unknown'
+  Unknown = 'Unknown',
+  Abort = 'Abort'
 }
 
 export enum LeafSide {
@@ -298,4 +301,28 @@ export interface TrelloAction {
   //   nonPublicAvailable: true;
   //   username: 'officerhalf';
   // };
+}
+
+export enum CardPosition {
+  Top = 'top',
+  Bottom = 'bottom'
+}
+
+export interface NewCardRequest {
+  name?: string;
+  desc?: string;
+  pos?: CardPosition;
+  // due?: string;
+  // dueComplete?: boolean;
+  idList: string;
+  // idMembers: string[];
+  idLabels?: string[];
+  // urlSource?: string;
+  // fileSource?: string;
+  // mimeType?: string;
+  // idCardSource?: string;
+  // keepFromSource?: string;
+  // address?: string;
+  // locationName?: string;
+  // coordinates?: string;
 }

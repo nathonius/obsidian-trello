@@ -1,6 +1,6 @@
 {
   "name": "obsidian-trello",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Connect a single Trello card to an Obsidian note. Once connected, see basic info, and add and view comments.",
   "main": "main.js",
   "scripts": {
@@ -22,7 +22,7 @@
     "rollup-plugin-terser": "^7.0.2",
     "sass": "^1.38.0",
     "tslib": "^2.2.0",
-    "typescript": "^4.2.4"
+    "typescript": "4.3.5"
   },
   "dependencies": {
     "rxjs": "^7.3.0"

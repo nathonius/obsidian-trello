@@ -1,12 +1,20 @@
 import { FileView, Notice, Plugin, addIcon, TFile, WorkspaceLeaf } from 'obsidian';
-import { BehaviorSubject, from, iif, Observable, of, Subject } from 'rxjs';
+import { forkJoin, from, iif, Observable, of, Subject } from 'rxjs';
 import { take, map, concatMap, tap, takeUntil } from 'rxjs/operators';
-import { CUSTOM_ICONS, DEFAULT_DATA, MetaKey, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from './constants';
-import { LeafSide, MetaEditApi, PluginData, TrelloAction, TrelloCard, TrelloItemCache, TrelloList } from './interfaces';
+import {
+  CUSTOM_ICONS,
+  DEFAULT_DATA,
+  LogLevel,
+  MetaKey,
+  NEW_TRELLO_CARD,
+  TRELLO_ERRORS,
+  TRELLO_VIEW_TYPE
+} from './constants';
+import { LeafSide, MetaEditApi, PluginData, PluginError, TrelloBoard, TrelloCard } from './interfaces';
 import { TrelloAPI } from './api';
 import { TrelloSettings } from './settings';
 import { PluginState } from './state';
-import { CardSuggestModal, BoardSuggestModal } from './suggest';
+import { CardSuggestModal, BoardSuggestModal, CardCreateModal, ListSuggestModal } from './modal';
 import { TrelloView } from './view/view';
 
 export class TrelloPlugin extends Plugin {
@@ -15,16 +23,14 @@ export class TrelloPlugin extends Plugin {
   view!: TrelloView;
   destroy = new Subject<void>();
   readonly boardSuggestModal = new BoardSuggestModal(this.app);
+  readonly listSuggestModal = new ListSuggestModal(this.app);
   readonly cardSuggestModal = new CardSuggestModal(this.app);
-  readonly cardCache: TrelloItemCache<TrelloCard> = {};
-  readonly cardActionsCache: TrelloItemCache<TrelloAction[]> = {};
-  readonly listCache: TrelloItemCache<TrelloList> = {};
-  readonly boardCardId = new BehaviorSubject<string | null>(null);
-  readonly currentToken = new BehaviorSubject<string>('');
+  readonly cardCreateModal = new CardCreateModal(this.app, this);
 
   get metaEditAvailable(): boolean {
     const available = !!(this.app as any).plugins.plugins['metaedit'];
     if (!available) {
+      this.log('MetaEdit not available.', LogLevel.Error);
       new Notice(TRELLO_ERRORS.metaEdit);
     }
     return available;
@@ -38,6 +44,7 @@ export class TrelloPlugin extends Plugin {
   }
 
   async onload(): Promise<void> {
+    this.log('Loading plugin');
     // Set up data and default data.
     const savedData: PluginData | undefined = await this.loadData();
     const data: PluginData = Object.assign({}, DEFAULT_DATA, savedData);
@@ -53,15 +60,11 @@ export class TrelloPlugin extends Plugin {
     // if (savedData && savedData.version !== DEFAULT_DATA.version) {
     // }
 
-    // Need token synchronously to help handle errors
-    this.state.settings
-      .pipe(
-        takeUntil(this.destroy),
-        map((s) => s.token)
-      )
-      .subscribe((token) => {
-        this.currentToken.next(token);
-      });
+    // Need some settings synchronously
+    this.state.settings.pipe(takeUntil(this.destroy)).subscribe((settings) => {
+      this.state.currentToken.next(settings.token);
+      this.state.verboseLogging.next(settings.verboseLogging);
+    });
 
     // Register trello view type
     this.registerView(TRELLO_VIEW_TYPE, (leaf: WorkspaceLeaf) => (this.view = new TrelloView(this, leaf)));
@@ -112,8 +115,27 @@ export class TrelloPlugin extends Plugin {
    * Open the settings modal to the trello tab
    */
   openTrelloSettings() {
+    this.log('Opening settings');
     (this.app as any).setting.openTabById('obsidian-trello');
     (this.app as any).setting.open();
+  }
+
+  log(message: string, logLevel: LogLevel = LogLevel.Info): void {
+    if (this.state.verboseLogging.value) {
+      const log = `OBISIDAN-TRELLO: ${message}`;
+      switch (logLevel) {
+        case LogLevel.Warn:
+          console.warn(log);
+          break;
+        case LogLevel.Error:
+          console.error(log);
+          break;
+        case LogLevel.Info:
+        default:
+          console.log(log);
+          break;
+      }
+    }
   }
 
   /**
@@ -126,12 +148,14 @@ export class TrelloPlugin extends Plugin {
     }
     const existing = await this.metaEdit.getPropertyValue(MetaKey.BoardCard, file);
     if (!existing) {
-      this.boardCardId.next(null);
+      this.log('File not trello connected');
+      this.state.boardCardId.next(null);
       return;
     }
 
     // This file is trello connected
-    this.boardCardId.next(existing);
+    this.log(`File trello connected, board/card ID ${existing}`);
+    this.state.boardCardId.next(existing);
   }
 
   /**
@@ -158,38 +182,76 @@ export class TrelloPlugin extends Plugin {
   connectTrelloCard(): void {
     const view = this.app.workspace.activeLeaf?.view;
 
+    // Might need this later
+    let board: TrelloBoard;
+
     if (view instanceof FileView && this.metaEditAvailable) {
+      this.log('Connecting trello card');
       this.state.settings
         .pipe(
           take(1),
           map((s) => s.selectedBoards),
           // If boards were selected, use those. Otherwise, call API.
           concatMap((boards) => iif(() => boards.length > 0, of(boards), this.api.getBoards())),
+          tap(() => {
+            this.log('-> Got boards');
+          }),
           // Open board suggestion modal
           concatMap((boards) => {
-            this.boardSuggestModal.boards = boards;
+            this.boardSuggestModal.options = boards;
             this.boardSuggestModal.open();
-            return this.boardSuggestModal.selectedBoard;
+            return this.boardSuggestModal.selected;
           }),
           take(1),
+          tap((selectedBoard) => {
+            this.log(`-> Selected board ${selectedBoard.id}`);
+            board = selectedBoard;
+          }),
           // Get available cards from selected board
-          concatMap((selected) => this.api.getCardsFromBoard(selected.id)),
+          concatMap((selectedBoard) => this.api.getCardsFromBoard(selectedBoard.id)),
+          tap((cards) => {
+            this.log(`-> Got ${cards.length} cards.`);
+          }),
           // Open card suggestion modal
-          concatMap((cards) => {
-            this.cardSuggestModal.cards = cards;
+          concatMap((cards: TrelloCard[]) => {
+            this.cardSuggestModal.options = cards;
             this.cardSuggestModal.open();
-            return this.cardSuggestModal.selectedCard;
+            return this.cardSuggestModal.selected;
           }),
           take(1),
-          map((selected) => `${selected.idBoard};${selected.id}`),
-          tap((boardCardId) => {
-            this.boardCardId.next(boardCardId);
+          tap((selectedCard: TrelloCard) => {
+            this.log(`-> Selected card ${selectedCard.id}`);
+          }),
+          concatMap((selectedCard: TrelloCard) =>
+            iif(() => selectedCard === NEW_TRELLO_CARD, this.addNewCard(board), of(selectedCard))
+          ),
+          map((selected: TrelloCard) => `${selected.idBoard};${selected.id}`),
+          tap((boardCardId: string) => {
+            this.log(`-> Updating file with board/card ID ${boardCardId}`);
+            this.state.boardCardId.next(boardCardId);
           }),
           concatMap((boardCardId) => this.updateOrCreateMeta(MetaKey.BoardCard, boardCardId, view.file))
         )
         .subscribe({
           next: () => {
             this.revealTrelloLeaf(true);
+          },
+          error: (err) => {
+            if (err === PluginError.Abort) {
+              this.log('-> Aborting connect flow.');
+            } else if (err === PluginError.Unauthorized) {
+              this.log('-> API returned unauthorized.', LogLevel.Error);
+              new Notice(TRELLO_ERRORS.unauthorized);
+            } else if (err === PluginError.RateLimit) {
+              this.log('-> API returned rate limit error.', LogLevel.Error);
+              new Notice(TRELLO_ERRORS.rateLimit);
+            } else if (err === PluginError.NoToken) {
+              this.log('-> No token present.', LogLevel.Error);
+              new Notice(TRELLO_ERRORS.noToken);
+            } else if (err === PluginError.Unknown) {
+              this.log('-> Caught unknown error.', LogLevel.Error);
+              new Notice(TRELLO_ERRORS.other);
+            }
           }
         });
     }
@@ -204,11 +266,44 @@ export class TrelloPlugin extends Plugin {
     if (view instanceof FileView && this.metaEditAvailable) {
       from(this.metaEdit.getPropertyValue(MetaKey.BoardCard, view.file)).subscribe((existing) => {
         if (existing) {
+          this.log('Disconnecting trello connected card.');
           this.metaEdit.deleteProperty(MetaKey.BoardCard, view.file);
-          this.boardCardId.next(null);
+          this.state.boardCardId.next(null);
         }
       });
     }
+  }
+
+  /**
+   * Has the user select a list from the already selected board,
+   * then opens the card creation modal. Returns the newly created
+   * card.
+   */
+  private addNewCard(board: TrelloBoard): Observable<TrelloCard> {
+    this.log('Beginning add new card flow.');
+    return forkJoin({
+      labels: this.api.getLabelsFromBoard(board.id),
+      list: this.api.getListsFromBoard(board.id).pipe(
+        concatMap((lists) => {
+          this.listSuggestModal.options = lists;
+          this.listSuggestModal.open();
+          return this.listSuggestModal.selected;
+        }),
+        take(1)
+      ),
+      settings: this.state.settings.pipe(take(1))
+    }).pipe(
+      concatMap(({ labels, list, settings }) => {
+        this.log('-> All add new card observables emitted, setting up card create modal.');
+        this.cardCreateModal.board = board;
+        this.cardCreateModal.list = list;
+        this.cardCreateModal.labels = labels;
+        this.cardCreateModal.defaultPosition = settings.newCardPosition;
+        this.cardCreateModal.open();
+        return this.cardCreateModal.createdCard;
+      }),
+      take(1)
+    );
   }
 
   /**
@@ -216,23 +311,28 @@ export class TrelloPlugin extends Plugin {
    * @param activate if true, reveal the leaf, if false it will only be added
    */
   private revealTrelloLeaf(activate = false): void {
+    this.log('Revealing trello leaf.');
     const leaves = this.app.workspace.getLeavesOfType(TRELLO_VIEW_TYPE);
 
     if (leaves.length === 0) {
+      this.log('-> No trello leaf found, creating.');
       this.state.settings
         .pipe(
           take(1),
           map((s) => s.openToSide)
         )
         .subscribe((side) => {
+          this.log(`-> Creating leaf on ${side} side.`);
           const leaf =
             side === LeafSide.Right ? this.app.workspace.getRightLeaf(false) : this.app.workspace.getLeftLeaf(false);
           leaf.setViewState({ type: TRELLO_VIEW_TYPE });
           if (activate) {
+            this.log('-> Leaf created, revealing.');
             this.app.workspace.revealLeaf(leaf);
           }
         });
     } else if (activate) {
+      this.log('-> Trello leaf found, revealing.');
       this.app.workspace.revealLeaf(leaves[0]);
     }
   }

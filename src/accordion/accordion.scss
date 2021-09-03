@@ -1,0 +1,32 @@
+.trello-accordion {
+  &--container {
+    margin: 2px 0;
+  }
+  &--title {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background-color: var(--background-primary);
+    font-size: 14px;
+    cursor: pointer;
+    &:hover {
+      background-color: var(--background-primary-alt);
+    }
+  }
+  &--content {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.2s ease-out;
+  }
+  &--title-icon {
+    svg {
+      transition: all 0.2s ease-out;
+      vertical-align: middle;
+    }
+    &.trello-accordion--expanded {
+      svg {
+        transform: rotate(-90deg);
+      }
+    }
+  }
+}
