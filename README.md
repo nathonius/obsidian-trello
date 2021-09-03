@@ -27,11 +27,15 @@ Tokens can be revoked at any time in your Trello account settings.
 
 **Open to Side** - Whether to open the Trello view to the left or right by default.
 
+**New Card Position** - Whether newly created cards should be added to the top or bottom of the list by default. Can be overridden when adding a card.
+
+**Verbose Logging** - Enable this if you're having trouble with the plugin. Logs will be enabled in the console.
+
 ## Commands
 
 **Show Trello view** - Open the Trello pane, if it isn't already.
 
-**Connect Trello card** - Connect a note to a (new) Trello card.
+**Connect Trello card** - Connect a note to a (new) Trello card. Optionally, create a new Trello card.
 
 **Disconnect Trello card** - Remove the Trello connection from a note.
 
