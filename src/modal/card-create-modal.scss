@@ -1,4 +1,76 @@
+@use '../variables.scss' as vars;
+
+// -8px 0 #cd8313
+
 .trello-card-create {
+  &--title {
+    background-color: transparent;
+    border: 0;
+    color: var(--text-normal);
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
   &--label-container {
+    display: flex;
+    justify-content: space-between;
+    margin: 0 0 4px;
+    padding: 6px 12px;
+    min-height: 36px;
+    border-radius: 3px;
+    cursor: pointer;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.2s ease-out;
+    @each $color in vars.$trello-colors {
+      &.label-color--#{$color} {
+        background-color: var(--trello-#{$color});
+        &:hover {
+          margin-left: 8px;
+          box-shadow: -8px 0 var(--trello-#{$color}-darker);
+        }
+      }
+    }
+  }
+  &--check {
+    display: block;
+    width: 20px;
+    height: 20px;
+    svg {
+      vertical-align: middle;
+    }
+  }
+  &--desc-wrapper {
+    padding: 8px;
+    background-color: var(--background-primary-alt);
+    border-radius: 3px;
+  }
+  &--desc-container {
+    display: grid;
+    &::after {
+      content: attr(data-replicated-value) ' ';
+      white-space: pre-wrap;
+      visibility: hidden;
+    }
+    & > textarea {
+      resize: none;
+      overflow: hidden;
+    }
+    &::after,
+    & > textarea {
+      /* textarea styling */
+      padding: 0;
+      border: 0;
+      background-color: transparent;
+      font-size: 14px;
+      word-break: break-all;
+
+      /* auto-grow hack */
+      grid-area: 1 / 1 / 2 / 2;
+    }
+  }
+  &--controls {
+    margin-top: 8px;
   }
 }

@@ -28,7 +28,7 @@ export class TrelloPlugin extends Plugin {
   readonly boardSuggestModal = new BoardSuggestModal(this.app);
   readonly listSuggestModal = new ListSuggestModal(this.app);
   readonly cardSuggestModal = new CardSuggestModal(this.app);
-  readonly cardCreateModal = new CardCreateModal(this.app);
+  readonly cardCreateModal = new CardCreateModal(this.app, this);
 
   get metaEditAvailable(): boolean {
     const available = !!(this.app as any).plugins.plugins['metaedit'];

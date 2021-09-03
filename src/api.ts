@@ -253,7 +253,7 @@ export class TrelloAPI {
     if (this.token.value === '') {
       return throwError(() => PluginError.NoToken);
     }
-    let url = this.auth(`${TRELLO_API}/1/cards?idList=${request.idList}`);
+    let url = this.auth(`${TRELLO_API}/1/cards`);
     // Add parameters
     url = this.addQueryParam(url, 'idList', request.idList);
     url = this.addQueryParam(url, 'name', request.name, true);
