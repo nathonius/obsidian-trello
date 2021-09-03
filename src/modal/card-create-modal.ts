@@ -2,19 +2,26 @@ import { App, Modal, setIcon } from 'obsidian';
 import { Subject } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Accordion } from '../accordion/accordion';
-import { PluginError, TrelloBoard, TrelloCard, TrelloLabel, TrelloList } from 'src/interfaces';
+import { CardPosition, PluginError, TrelloBoard, TrelloCard, TrelloLabel, TrelloList } from 'src/interfaces';
 import { TrelloPlugin } from '../plugin';
 
+/**
+ * Create a new card and update createdCard
+ * Board, labels, list, and default position should all be set
+ * before opening the modal.
+ */
 export class CardCreateModal extends Modal {
   board!: TrelloBoard;
   labels: TrelloLabel[] = [];
   list!: TrelloList;
+  defaultPosition!: CardPosition;
   createdCard = new Subject<TrelloCard>();
 
   // New state
   private selectedLabels: Record<string, TrelloLabel> = {};
   private title!: HTMLInputElement;
   private description!: HTMLTextAreaElement;
+  private position!: HTMLSelectElement;
   private finishedCardCreation = false;
 
   constructor(app: App, private readonly plugin: TrelloPlugin) {
@@ -22,7 +29,6 @@ export class CardCreateModal extends Modal {
   }
 
   onOpen(): void {
-    this.finishedCardCreation = false;
     this.contentEl.empty();
     const container = this.contentEl.createDiv();
     this.title = this.renderTitle(container);
@@ -31,27 +37,29 @@ export class CardCreateModal extends Modal {
     const labelsSection = accordion.addSection('Labels');
     this.description = this.renderDescription(descriptionSection.contentEl);
     this.renderLabels(labelsSection.contentEl);
+    this.position = this.renderPositionSelect(container);
     const controls = container.createDiv('trello-card-create--controls');
-    const saveButton = controls.createEl('button', { text: 'Save' });
+    const saveButton = controls.createEl('button', { text: 'Save', cls: 'mod-cta' });
     saveButton.addEventListener('click', this.onSave.bind(this));
     const cancelButton = controls.createEl('button', { text: 'Cancel' });
     cancelButton.addEventListener('click', this.close.bind(this));
   }
 
   onClose(): void {
-    this.reset();
     if (!this.finishedCardCreation) {
       this.createdCard.error(PluginError.Abort);
     }
+    this.reset();
   }
 
-  onSave(): void {
+  private onSave(): void {
     this.plugin.api
       .addNewCard({
         idList: this.list.id,
         idLabels: Object.values(this.selectedLabels).map((label) => label.id),
         name: this.title.value,
-        desc: this.description.value
+        desc: this.description.value,
+        pos: this.position.value as CardPosition
       })
       .pipe(map((resp) => resp.response))
       .subscribe({
@@ -74,6 +82,7 @@ export class CardCreateModal extends Modal {
     this.createdCard = new Subject<TrelloCard>();
     this.title.value = '';
     this.description.value = '';
+    this.finishedCardCreation = false;
   }
 
   private renderTitle(parent: HTMLElement): HTMLInputElement {
@@ -133,5 +142,21 @@ export class CardCreateModal extends Modal {
         this.selectedLabels[label.id] = label;
       }
     });
+  }
+
+  private renderPositionSelect(parent: HTMLElement): HTMLSelectElement {
+    const container = parent.createDiv('trello-card-create--position-select-container');
+    container.createEl('label', {
+      text: 'Add new card to',
+      attr: { for: 'trello-card-create--position-select' }
+    });
+    const select = container.createEl('select', {
+      cls: 'dropdown',
+      attr: { id: 'trello-card-create--position-select' }
+    });
+    select.createEl('option', { text: 'Top', attr: { value: CardPosition.Top } });
+    select.createEl('option', { text: 'Bottom', attr: { value: CardPosition.Bottom } });
+    select.value = this.defaultPosition;
+    return select;
   }
 }

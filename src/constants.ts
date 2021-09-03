@@ -1,4 +1,10 @@
-import { LeafSide, PluginData, PluginSettings, TrelloCard } from './interfaces';
+import { CardPosition, LeafSide, PluginData, PluginSettings, TrelloCard } from './interfaces';
+
+export enum LogLevel {
+  Info,
+  Warn,
+  Error
+}
 
 export const CUSTOM_ICONS = {
   trello: {
@@ -24,12 +30,14 @@ export const TRELLO_ERRORS = {
 export const DEFAULT_SETTINGS: PluginSettings = {
   token: '',
   selectedBoards: [],
-  openToSide: LeafSide.Right
+  openToSide: LeafSide.Right,
+  newCardPosition: CardPosition.Top,
+  verboseLogging: false
 };
 
 export const DEFAULT_DATA: PluginData = {
   settings: DEFAULT_SETTINGS,
-  version: '1.0.0'
+  version: '1.1.0'
 };
 
 export enum MetaKey {

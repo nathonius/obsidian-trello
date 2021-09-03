@@ -43,6 +43,8 @@ export class TrelloViewManager {
         }),
         filter((boardCard) => boardCard !== null && boardCard !== ''),
         switchMap((boardCard) => {
+          this.plugin.log(`View Manager - Got new board/card ID ${boardCard}`);
+          this.plugin.log('-> Getting card from API/cache.');
           // Get card from cache/api
           const [boardId, cardId] = boardCard!.split(';');
           return this.plugin.api.getCardFromBoard(boardId, cardId);
@@ -52,10 +54,12 @@ export class TrelloViewManager {
         next: (card) => {
           // If card has changed, reset the actions and list to avoid inaccurate renders
           if (this.currentCard.value !== null && this.currentCard.value.id !== card.id) {
+            this.plugin.log('View Manager - Card changed, resetting extra info.');
             this.currentActions.next(null);
             this.currentList.next(null);
           }
           this.cardError = null;
+          this.plugin.log('-> Card updated.');
           this.currentCard.next(card);
         },
         error: (err: PluginError) => {
@@ -76,6 +80,7 @@ export class TrelloViewManager {
       )
       .subscribe({
         next: (actions) => {
+          this.plugin.log('View Manager - Actions updated.');
           this.actionsError = null;
           this.currentActions.next(actions);
         },
@@ -97,6 +102,7 @@ export class TrelloViewManager {
       )
       .subscribe({
         next: (list) => {
+          this.plugin.log('View Manager - List updated.');
           this.listError = null;
           this.currentList.next(list);
         },
@@ -112,6 +118,7 @@ export class TrelloViewManager {
         takeUntil(this.destroy),
         filter(() => this.currentCard.value !== null),
         tap(() => {
+          this.plugin.log('View Manager - Refreshing data.');
           this.bypassActionCache = true;
           this.bypassListCache = true;
         }),
@@ -124,6 +131,7 @@ export class TrelloViewManager {
         next: (card) => {
           this.cardError = null;
           if (card) {
+            this.plugin.log('-> Got updated card.');
             this.currentCard.next(card);
           }
         },

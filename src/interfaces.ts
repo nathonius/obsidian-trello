@@ -10,6 +10,8 @@ export interface PluginSettings {
   token: string;
   selectedBoards: TrelloBoard[];
   openToSide: LeafSide;
+  newCardPosition: CardPosition;
+  verboseLogging: boolean;
 }
 
 export enum PluginError {

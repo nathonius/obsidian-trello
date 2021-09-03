@@ -1,7 +1,5 @@
 @use '../variables.scss' as vars;
 
-// -8px 0 #cd8313
-
 .trello-card-create {
   &--title {
     background-color: transparent;
@@ -11,6 +9,7 @@
     font-weight: bold;
     margin-bottom: 8px;
   }
+
   &--label-container {
     display: flex;
     justify-content: space-between;
@@ -23,6 +22,7 @@
     font-size: 14px;
     font-weight: bold;
     transition: all 0.2s ease-out;
+
     @each $color in vars.$trello-colors {
       &.label-color--#{$color} {
         background-color: var(--trello-#{$color});
@@ -33,6 +33,7 @@
       }
     }
   }
+
   &--check {
     display: block;
     width: 20px;
@@ -41,11 +42,13 @@
       vertical-align: middle;
     }
   }
+
   &--desc-wrapper {
     padding: 8px;
     background-color: var(--background-primary-alt);
     border-radius: 3px;
   }
+
   &--desc-container {
     display: grid;
     &::after {
@@ -70,7 +73,15 @@
       grid-area: 1 / 1 / 2 / 2;
     }
   }
+
   &--controls {
     margin-top: 8px;
+  }
+
+  &--position-select-container {
+    margin-top: 8px;
+    select {
+      margin-left: 4px;
+    }
   }
 }

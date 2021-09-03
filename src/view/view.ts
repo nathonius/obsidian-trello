@@ -55,6 +55,7 @@ export class TrelloView extends ItemView {
    * Renders a view for when there is no token, no card, or any errors occurred.
    */
   private renderEmptyView(error: PluginError | null) {
+    this.plugin.log('Rendering empty view.');
     const pane = this.renderPaneContainer();
     if (error === null || error === PluginError.NoToken) {
       pane.createEl('h2', { text: 'No Trello card connected.' });

@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import { take } from 'rxjs/operators';
 import { TRELLO_TOKEN_URL } from './constants';
-import { LeafSide, PluginSettings } from './interfaces';
+import { CardPosition, LeafSide, PluginSettings } from './interfaces';
 import { TrelloPlugin } from './plugin';
 import { BoardSelectModal } from './modal';
 
@@ -21,6 +21,8 @@ export class TrelloSettings extends PluginSettingTab {
       this.buildTokenSetting(this.containerEl, settings);
       this.buildBoardSelectSetting(this.containerEl);
       this.buildOpenToSideSetting(this.containerEl, settings);
+      this.buildNewCardPositionSetting(this.containerEl, settings);
+      this.buildVerboseLoggingSetting(this.containerEl, settings);
     });
   }
 
@@ -35,8 +37,8 @@ export class TrelloSettings extends PluginSettingTab {
         text
           .setPlaceholder('Enter token')
           .setValue(settings.token)
-          .onChange(async (value: string) => {
-            await this.plugin.state.updateSetting('token', value.trim());
+          .onChange((value: string) => {
+            this.plugin.state.updateSetting('token', value.trim());
           });
       });
   }
@@ -61,9 +63,37 @@ export class TrelloSettings extends PluginSettingTab {
           .addOption(LeafSide.Right, 'Right')
           .addOption(LeafSide.Left, 'Left')
           .setValue(settings.openToSide)
-          .onChange(async (value) => {
-            await this.plugin.state.updateSetting('openToSide', value as LeafSide);
+          .onChange((value) => {
+            this.plugin.state.updateSetting('openToSide', value as LeafSide);
           });
+      });
+  }
+
+  private buildNewCardPositionSetting(containerEl: HTMLElement, settings: PluginSettings): void {
+    new Setting(containerEl)
+      .setName('New Card Position')
+      .setDesc(
+        'Whether newly created cards should be added to the top or bottom of the list by default. Can be overridden when adding a card.'
+      )
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption(CardPosition.Top, 'Top')
+          .addOption(CardPosition.Bottom, 'Bottom')
+          .setValue(settings.newCardPosition)
+          .onChange((value) => {
+            this.plugin.state.updateSetting('newCardPosition', value as CardPosition);
+          });
+      });
+  }
+
+  private buildVerboseLoggingSetting(containerEl: HTMLElement, settings: PluginSettings): void {
+    new Setting(containerEl)
+      .setName('Verbose Logging')
+      .setDesc("Enable this if you're having trouble with the plugin. Logs will be enabled in the console.")
+      .addToggle((toggle) => {
+        toggle.setValue(settings.verboseLogging).onChange((value) => {
+          this.plugin.state.updateSetting('verboseLogging', value);
+        });
       });
   }
 }
