@@ -1,5 +1,5 @@
 import { FileView, Notice, Plugin, addIcon, TFile, WorkspaceLeaf } from 'obsidian';
-import { BehaviorSubject, forkJoin, from, iif, Observable, of, Subject, throwError } from 'rxjs';
+import { forkJoin, from, iif, Observable, of, Subject } from 'rxjs';
 import { take, map, concatMap, tap, takeUntil } from 'rxjs/operators';
 import {
   CUSTOM_ICONS,
@@ -10,19 +10,7 @@ import {
   TRELLO_ERRORS,
   TRELLO_VIEW_TYPE
 } from './constants';
-import {
-  LeafSide,
-  MetaEditApi,
-  PluginData,
-  PluginError,
-  PluginSettings,
-  TrelloAction,
-  TrelloBoard,
-  TrelloCard,
-  TrelloItemCache,
-  TrelloLabel,
-  TrelloList
-} from './interfaces';
+import { LeafSide, MetaEditApi, PluginData, PluginError, TrelloBoard, TrelloCard } from './interfaces';
 import { TrelloAPI } from './api';
 import { TrelloSettings } from './settings';
 import { PluginState } from './state';
@@ -251,7 +239,6 @@ export class TrelloPlugin extends Plugin {
           error: (err) => {
             if (err === PluginError.Abort) {
               this.log('-> Aborting connect flow.');
-              return;
             } else if (err === PluginError.Unauthorized) {
               this.log('-> API returned unauthorized.', LogLevel.Error);
               new Notice(TRELLO_ERRORS.unauthorized);

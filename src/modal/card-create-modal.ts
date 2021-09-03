@@ -99,14 +99,13 @@ export class CardCreateModal extends Modal {
     const descContainer = wrapper.createDiv({
       cls: 'trello-card-create--desc-container'
     });
-    const desc = descContainer.createEl('textarea', {
+    return descContainer.createEl('textarea', {
       cls: 'trello-card-create--desc',
       attr: {
         onInput: 'this.parentNode.dataset.replicatedValue = this.value',
         placeholder: 'Add a more detailed description...'
       }
     });
-    return desc;
   }
 
   private renderLabels(parent: HTMLElement): void {
