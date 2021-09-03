@@ -44,7 +44,6 @@ export class TrelloPlugin extends Plugin {
   }
 
   async onload(): Promise<void> {
-    this.log('Loading plugin');
     // Set up data and default data.
     const savedData: PluginData | undefined = await this.loadData();
     const data: PluginData = Object.assign({}, DEFAULT_DATA, savedData);
