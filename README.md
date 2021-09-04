@@ -39,6 +39,10 @@ Tokens can be revoked at any time in your Trello account settings.
 
 **Disconnect Trello card** - Remove the Trello connection from a note.
 
+## Theming
+
+Wherever possible, the plugin uses built-in theme variables, so your color variable overrides will apply here. The exception is the trello colors included in the plugin; these match the colors from Trello's UI. However, these can be overridden the same as Obsidian's color variables. See [variables.scss](src/variables.scss) for the full listing of colors. Each has a base shade, lighter shade, and darker shade.
+
 ## Contributing
 
 Pull requests are always welcome. Keep in mind that this plugin makes heavy use of [rxjs](https://www.learnrxjs.io/) for reactive state management.
