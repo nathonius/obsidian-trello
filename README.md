@@ -4,7 +4,7 @@
 
 ## Overview
 
-Connect a single Trello card to an Obsidian note. Once connected, see basic info, and add and view comments.
+Connect a single Trello card to an Obsidian note. Once connected, see basic info, and add and view comments. No card to connect to the note? Add a new note to a list from inside Obsidian.
 
 The connection is through a YAML frontmatter key.
 
