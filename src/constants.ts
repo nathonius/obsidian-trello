@@ -38,7 +38,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
 export const DEFAULT_DATA: PluginData = {
   settings: DEFAULT_SETTINGS,
-  version: '1.1.0',
+  version: '1.2.0',
   firstRun: true
 };
 

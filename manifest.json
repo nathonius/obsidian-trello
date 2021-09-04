@@ -1,7 +1,7 @@
 {
   "id": "obsidian-trello",
   "name": "Obsidian Trello",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "minAppVersion": "0.12.12",
   "description": "Connect a single Trello card to an Obsidian note. Once connected, see basic info, and add and view comments.",
   "author": "Obsidian",
