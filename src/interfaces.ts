@@ -4,6 +4,7 @@ import { TFile } from 'obsidian';
 export interface PluginData {
   settings: PluginSettings;
   version: string;
+  firstRun: boolean;
 }
 
 export interface PluginSettings {

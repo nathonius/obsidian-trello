@@ -39,4 +39,8 @@ export class PluginState {
     newSettings[key] = value;
     this.data.next({ ...this.data.value, settings: newSettings });
   }
+
+  completedFirstRun(): void {
+    this.data.next({ ...this.data.value, firstRun: false });
+  }
 }

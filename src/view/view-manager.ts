@@ -142,6 +142,10 @@ export class TrelloViewManager {
       });
   }
 
+  /**
+   * Move the current card from one list to a newly selected one
+   * on the same board.
+   */
   moveCard(): void {
     if (this.currentCard.value && this.currentList.value) {
       this.plugin.log('View Manager - Beginning move card flow');

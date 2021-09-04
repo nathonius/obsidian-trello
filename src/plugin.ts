@@ -101,6 +101,12 @@ export class TrelloPlugin extends Plugin {
       },
       icon: CUSTOM_ICONS.trello.id
     });
+
+    // If this is the first run, add the trello pane.
+    if (data.firstRun) {
+      this.revealTrelloLeaf(true);
+      this.state.completedFirstRun();
+    }
   }
 
   onunload() {
@@ -198,12 +204,7 @@ export class TrelloPlugin extends Plugin {
             this.log('-> Got boards');
           }),
           // Open board suggestion modal
-          concatMap((boards) => {
-            this.boardSuggestModal.options = boards;
-            this.boardSuggestModal.open();
-            return this.boardSuggestModal.selected;
-          }),
-          take(1),
+          concatMap((boards) => this.selectBoard(boards)),
           tap((selectedBoard) => {
             this.log(`-> Selected board ${selectedBoard.id}`);
             board = selectedBoard;
@@ -214,12 +215,7 @@ export class TrelloPlugin extends Plugin {
             this.log(`-> Got ${cards.length} cards.`);
           }),
           // Open card suggestion modal
-          concatMap((cards: TrelloCard[]) => {
-            this.cardSuggestModal.options = cards;
-            this.cardSuggestModal.open();
-            return this.cardSuggestModal.selected;
-          }),
-          take(1),
+          concatMap((cards: TrelloCard[]) => this.selectCard(cards)),
           tap((selectedCard: TrelloCard) => {
             this.log(`-> Selected card ${selectedCard.id}`);
           }),
@@ -273,6 +269,18 @@ export class TrelloPlugin extends Plugin {
         }
       });
     }
+  }
+
+  private selectBoard(boards: TrelloBoard[]): Observable<TrelloBoard> {
+    this.boardSuggestModal.options = boards;
+    this.boardSuggestModal.open();
+    return this.boardSuggestModal.selected.pipe(take(1));
+  }
+
+  private selectCard(cards: TrelloCard[]): Observable<TrelloCard> {
+    this.cardSuggestModal.options = cards;
+    this.cardSuggestModal.open();
+    return this.cardSuggestModal.selected.pipe(take(1));
   }
 
   /**
