@@ -32,6 +32,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   selectedBoards: [],
   openToSide: LeafSide.Right,
   newCardPosition: CardPosition.Top,
+  movedCardPosition: CardPosition.Top,
   verboseLogging: false
 };
 

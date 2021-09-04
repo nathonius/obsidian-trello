@@ -3,6 +3,7 @@ import { ajax, AjaxError, AjaxResponse } from 'rxjs/ajax';
 import { map, takeUntil, tap, catchError } from 'rxjs/operators';
 import { TRELLO_API, TRELLO_API_KEY } from './constants';
 import {
+  CardPosition,
   NewCardRequest,
   PluginError,
   TrelloAction,
@@ -281,7 +282,7 @@ export class TrelloAPI {
   /**
    * Update the list on a card by card and list id
    */
-  updateCardList(cardId: string, idList: string): Observable<TrelloCard> {
+  updateCardList(cardId: string, idList: string, position: CardPosition = CardPosition.Top): Observable<TrelloCard> {
     this.plugin.log('API - updateCardList');
     return this.updateCard({ id: cardId, idList });
   }

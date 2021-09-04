@@ -4,6 +4,7 @@ import { take, map, concatMap, tap, takeUntil } from 'rxjs/operators';
 import {
   CUSTOM_ICONS,
   DEFAULT_DATA,
+  DEFAULT_SETTINGS,
   LogLevel,
   MetaKey,
   NEW_TRELLO_CARD,
@@ -47,6 +48,7 @@ export class TrelloPlugin extends Plugin {
     // Set up data and default data.
     const savedData: PluginData | undefined = await this.loadData();
     const data: PluginData = Object.assign({}, DEFAULT_DATA, savedData);
+    data.settings = Object.assign({}, DEFAULT_SETTINGS, savedData?.settings);
     this.state = new PluginState(this, data);
 
     // Create new API instance

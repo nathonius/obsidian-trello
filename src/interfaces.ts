@@ -11,6 +11,7 @@ export interface PluginSettings {
   selectedBoards: TrelloBoard[];
   openToSide: LeafSide;
   newCardPosition: CardPosition;
+  movedCardPosition: CardPosition;
   verboseLogging: boolean;
 }
 

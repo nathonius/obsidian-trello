@@ -1,5 +1,5 @@
-import { BehaviorSubject, Observable } from 'rxjs';
-import { concatMap, filter, finalize, switchMap, takeUntil, tap } from 'rxjs/operators';
+import { BehaviorSubject, combineLatest, forkJoin, Observable } from 'rxjs';
+import { concatMap, filter, finalize, map, switchMap, take, takeUntil, tap } from 'rxjs/operators';
 import { TrelloPlugin } from '../plugin';
 import { PluginError, TrelloAction, TrelloCard, TrelloList } from '../interfaces';
 
@@ -143,23 +143,40 @@ export class TrelloViewManager {
   }
 
   moveCard(): void {
-    if (this.currentCard.value) {
+    if (this.currentCard.value && this.currentList.value) {
       this.plugin.log('View Manager - Beginning move card flow');
       const card = this.currentCard.value;
-      this.plugin.api
-        .getListsFromBoard(card.idBoard)
-        .pipe(
+      const currentList = this.currentList.value;
+      forkJoin({
+        list: this.plugin.api.getListsFromBoard(card.idBoard).pipe(
+          map((lists) => {
+            this.plugin.log('-> Marking current list.');
+            const current = lists.find((l) => l.id === currentList.id);
+            if (current) {
+              current.name = `${current.name} (current list)`;
+            }
+            return lists;
+          }),
           concatMap((lists) => {
             this.plugin.log('-> Got all lists for board.');
             this.plugin.listSuggestModal.options = lists;
             this.plugin.listSuggestModal.open();
             return this.plugin.listSuggestModal.selected;
           }),
+          take(1),
           tap((newList) => {
             this.plugin.log(`-> Selected list ${newList.id}. Updating card.`);
-          }),
-          concatMap((newList) => this.plugin.api.updateCardList(card.id, newList.id))
+          })
+        ),
+        position: this.plugin.state.settings.pipe(
+          take(1),
+          map((s) => s.movedCardPosition),
+          tap((position) => {
+            this.plugin.log(`-> Moved card position: ${position}`);
+          })
         )
+      })
+        .pipe(concatMap(({ list, position }) => this.plugin.api.updateCardList(card.id, list.id, position)))
         .subscribe({
           next: (updatedCard) => {
             this.plugin.log('-> Updated card.');
