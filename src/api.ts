@@ -3,6 +3,7 @@ import { ajax, AjaxError, AjaxResponse } from 'rxjs/ajax';
 import { map, takeUntil, tap, catchError } from 'rxjs/operators';
 import { TRELLO_API, TRELLO_API_KEY } from './constants';
 import {
+  CardPosition,
   NewCardRequest,
   PluginError,
   TrelloAction,
@@ -279,14 +280,51 @@ export class TrelloAPI {
   }
 
   /**
+   * Update the list on a card by card and list id
+   */
+  updateCardList(cardId: string, idList: string, position: CardPosition = CardPosition.Top): Observable<TrelloCard> {
+    this.plugin.log('API - updateCardList');
+    return this.updateCard({ id: cardId, idList });
+  }
+
+  /**
+   * General update method. Should only be used internally.
+   * All updates should be proxied through individual methods.
+   */
+  private updateCard(updatedCard: Partial<TrelloCard> & { id: string }): Observable<TrelloCard> {
+    this.plugin.log('API - updateCard');
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
+    let url = this.auth(`${TRELLO_API}/1/cards/${updatedCard.id}`);
+    // Add parameters. Only some properties can be updated here.
+    url = this.addQueryParam(url, 'name', updatedCard.name, true);
+    url = this.addQueryParam(url, 'desc', updatedCard.desc, true);
+    url = this.addQueryParam(url, 'idBoard', updatedCard.idBoard);
+    url = this.addQueryParam(url, 'idList', updatedCard.idList);
+    url = this.addQueryParam(url, 'due', updatedCard.due);
+    url = this.addQueryParam(url, 'idAttachmentCover', updatedCard.idAttachmentCover);
+    if (updatedCard.idLabels) {
+      url = this.addQueryParam(url, 'idLabels', updatedCard.idLabels.join(','));
+    }
+    if (updatedCard.dueComplete !== undefined) {
+      url = this.addQueryParam(url, 'dueComplete', updatedCard.dueComplete.toString());
+    }
+
+    return ajax<TrelloCard>({ url, method: 'PUT', crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err)),
+      map((resp) => resp.response)
+    );
+  }
+
+  /**
    * Add the API key and token query params to a given call.
-   *
    */
   private auth(url: string): string {
     return `${url}${url.includes('?') ? '&' : '?'}key=${TRELLO_API_KEY}&token=${this.token.value}`;
   }
 
-  private addQueryParam(url: string, key: string, value: string | undefined, encode = false) {
+  private addQueryParam(url: string, key: string, value: string | null | undefined, encode = false) {
     if (value) {
       return `${url}${url.includes('?') ? '&' : '?'}${key}=${encode ? encodeURIComponent(value) : value}`;
     }

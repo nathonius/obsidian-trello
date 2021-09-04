@@ -4,7 +4,7 @@
 
 ## Overview
 
-Connect a single Trello card to an Obsidian note. Once connected, see basic info, and add and view comments. No card to connect to the note? Add a new note to a list from inside Obsidian.
+Connect a single Trello card to an Obsidian note. Once connected, see basic info, and add and view comments. No card to connect to the note? Add a new note to a list from inside Obsidian. When you finish a task, move the card to a different list.
 
 The connection is through a YAML frontmatter key.
 
@@ -28,6 +28,8 @@ Tokens can be revoked at any time in your Trello account settings.
 **Open to Side** - Whether to open the Trello view to the left or right by default.
 
 **New Card Position** - Whether newly created cards should be added to the top or bottom of the list by default. Can be overridden when adding a card.
+
+**Moved Card Position** - When moving a card from one list to another, should it be moved to the top or bottom of the selected list.
 
 **Verbose Logging** - Enable this if you're having trouble with the plugin. Logs will be enabled in the console.
 

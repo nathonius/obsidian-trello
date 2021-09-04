@@ -134,12 +134,19 @@ export class TrelloView extends ItemView {
    */
   private renderCardInfo(card: TrelloCard, list: TrelloList | null, parent: HTMLElement): void {
     if (list) {
-      const listName = parent.createDiv({
+      const listName = parent.createEl('a', {
         cls: 'trello-pane--card-info--list',
-        text: list.name
+        text: list.name,
+        attr: {
+          'aria-label': 'Move card',
+          href: '#'
+        }
       });
       const listIcon = listName.createSpan();
       setIcon(listIcon, 'right-arrow-with-tail');
+      listName.addEventListener('click', () => {
+        this.viewManager.moveCard();
+      });
     }
     const cardName = parent.createEl('h3', { text: card.name });
     const cardLink = cardName.createEl('a', {

@@ -12,8 +12,12 @@
   }
   &--card-info {
     &--list {
-      color: var(--text-faint);
       font-size: 12px;
+      &,
+      &:hover {
+        color: var(--text-faint);
+        text-decoration: none;
+      }
       svg {
         vertical-align: middle;
       }

@@ -23,6 +23,7 @@ export class TrelloSettings extends PluginSettingTab {
       this.buildBoardSelectSetting(this.containerEl);
       this.buildOpenToSideSetting(this.containerEl, settings);
       this.buildNewCardPositionSetting(this.containerEl, settings);
+      this.buildMovedCardPositionSetting(this.containerEl, settings);
       this.buildVerboseLoggingSetting(this.containerEl, settings);
     });
   }
@@ -87,6 +88,24 @@ export class TrelloSettings extends PluginSettingTab {
           .setValue(settings.newCardPosition)
           .onChange((value) => {
             this.plugin.state.updateSetting('newCardPosition', value as CardPosition);
+          });
+      });
+  }
+
+  private buildMovedCardPositionSetting(containerEl: HTMLElement, settings: PluginSettings): void {
+    this.plugin.log(`-> Adding moved card position setting with initial value ${settings.movedCardPosition}`);
+    new Setting(containerEl)
+      .setName('Moved Card Position')
+      .setDesc(
+        'When moving a card from one list to another, should it be moved to the top or bottom of the selected list.'
+      )
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption(CardPosition.Top, 'Top')
+          .addOption(CardPosition.Bottom, 'Bottom')
+          .setValue(settings.movedCardPosition)
+          .onChange((value) => {
+            this.plugin.state.updateSetting('movedCardPosition', value as CardPosition);
           });
       });
   }
