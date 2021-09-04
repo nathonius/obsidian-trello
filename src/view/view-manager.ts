@@ -1,5 +1,5 @@
 import { BehaviorSubject, Observable } from 'rxjs';
-import { filter, finalize, switchMap, takeUntil, tap } from 'rxjs/operators';
+import { concatMap, filter, finalize, switchMap, takeUntil, tap } from 'rxjs/operators';
 import { TrelloPlugin } from '../plugin';
 import { PluginError, TrelloAction, TrelloCard, TrelloList } from '../interfaces';
 
@@ -140,5 +140,37 @@ export class TrelloViewManager {
           this.currentCard.next(null);
         }
       });
+  }
+
+  moveCard(): void {
+    if (this.currentCard.value) {
+      this.plugin.log('View Manager - Beginning move card flow');
+      const card = this.currentCard.value;
+      this.plugin.api
+        .getListsFromBoard(card.idBoard)
+        .pipe(
+          concatMap((lists) => {
+            this.plugin.log('-> Got all lists for board.');
+            this.plugin.listSuggestModal.options = lists;
+            this.plugin.listSuggestModal.open();
+            return this.plugin.listSuggestModal.selected;
+          }),
+          tap((newList) => {
+            this.plugin.log(`-> Selected list ${newList.id}. Updating card.`);
+          }),
+          concatMap((newList) => this.plugin.api.updateCardList(card.id, newList.id))
+        )
+        .subscribe({
+          next: (updatedCard) => {
+            this.plugin.log('-> Updated card.');
+            this.currentCard.next(updatedCard);
+          },
+          error: (err: PluginError) => {
+            if (err === PluginError.Abort) {
+              return;
+            }
+          }
+        });
+    }
   }
 }
