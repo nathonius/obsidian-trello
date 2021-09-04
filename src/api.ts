@@ -317,13 +317,8 @@ export class TrelloAPI {
     );
   }
 
-  // export type TrelloCardUpdatable = Pick<
-  // TrelloCard,
-  // 'name' | 'desc' | 'idAttachmentCover' | 'idList' | 'idLabels' | 'idBoard' | 'due' | 'dueComplete'
-  // >;
   /**
    * Add the API key and token query params to a given call.
-   *
    */
   private auth(url: string): string {
     return `${url}${url.includes('?') ? '&' : '?'}key=${TRELLO_API_KEY}&token=${this.token.value}`;

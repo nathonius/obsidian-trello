@@ -25,8 +25,8 @@ export class PluginState {
     this.data = new BehaviorSubject<PluginData>(data);
 
     // Update saved data when data changes
-    this.data.pipe(takeUntil(plugin.destroy)).subscribe(async (data) => {
-      await this.plugin.saveData(data);
+    this.data.pipe(takeUntil(plugin.destroy)).subscribe(async (newData) => {
+      await this.plugin.saveData(newData);
     });
   }
 

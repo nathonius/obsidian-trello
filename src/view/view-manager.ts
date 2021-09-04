@@ -1,4 +1,4 @@
-import { BehaviorSubject, combineLatest, forkJoin, Observable } from 'rxjs';
+import { BehaviorSubject, forkJoin, Observable } from 'rxjs';
 import { concatMap, filter, finalize, map, switchMap, take, takeUntil, tap } from 'rxjs/operators';
 import { TrelloPlugin } from '../plugin';
 import { PluginError, TrelloAction, TrelloCard, TrelloList } from '../interfaces';

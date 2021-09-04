@@ -1,4 +1,4 @@
-import { App, Instruction, SuggestModal } from 'obsidian';
+import { App, SuggestModal } from 'obsidian';
 import { Subject } from 'rxjs';
 import { PluginError } from '../interfaces';
 
