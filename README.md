@@ -8,6 +8,8 @@ Connect a single Trello card to an Obsidian note. Once connected, see basic info
 
 The connection is through a YAML frontmatter key.
 
+There are plenty of features on the horizon and you can [track progress on the Trello board](https://trello.com/b/1fVRPLKO/obsidian-trello) for the project.
+
 ## Setup
 
 ### Prerequisites
@@ -51,6 +53,6 @@ Pull requests are always welcome. Keep in mind that this plugin makes heavy use 
 
 ## Support
 
-Feel free to contact me on the Obsidian discord, @OfficerHalf.
+Raise an issue here on GitHub if there's a problem. If you're unsure, feel free to contact me on the Obsidian discord, @OfficerHalf.
 
 [tokenurl]: https://trello.com/1/authorize?expiration=never&scope=read,write&response_type=token&name=Obsidian%20Trello%20Token&key=9537467993aefd6dca9ee7788179c298
