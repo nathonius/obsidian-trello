@@ -154,24 +154,26 @@ export class TrelloView extends ItemView {
     });
     setIcon(cardLink, 'navigate-glyph', 24);
 
-    const descContainer = parent.createDiv('trello-card-desc--container');
-    const collapseButton = descContainer.createEl('a', {
-      text: 'Description',
-      cls: 'trello-card-desc--collapse',
-      href: '#'
-    });
-    const collapseIcon = collapseButton.createSpan('trello-card-desc--collapse-icon');
-    setIcon(collapseIcon, 'down-chevron-glyph');
-    const description = descContainer.createDiv({ text: card.desc, cls: 'trello-card-desc--desc' });
-    collapseButton.addEventListener('click', () => {
-      if (description.style.maxHeight) {
-        description.style.maxHeight = '';
-        setIcon(collapseIcon, 'down-chevron-glyph');
-      } else {
-        description.style.maxHeight = description.scrollHeight + 'px';
-        setIcon(collapseIcon, 'up-chevron-glyph');
-      }
-    });
+    if (card.desc) {
+      const descContainer = parent.createDiv('trello-card-desc--container');
+      const collapseButton = descContainer.createEl('a', {
+        text: 'Description',
+        cls: 'trello-card-desc--collapse',
+        href: '#'
+      });
+      const collapseIcon = collapseButton.createSpan('trello-card-desc--collapse-icon');
+      setIcon(collapseIcon, 'down-chevron-glyph');
+      const description = descContainer.createDiv({ text: card.desc, cls: 'trello-card-desc--desc' });
+      collapseButton.addEventListener('click', () => {
+        if (description.style.maxHeight) {
+          description.style.maxHeight = '';
+          setIcon(collapseIcon, 'down-chevron-glyph');
+        } else {
+          description.style.maxHeight = description.scrollHeight + 'px';
+          setIcon(collapseIcon, 'up-chevron-glyph');
+        }
+      });
+    }
   }
 
   /**
