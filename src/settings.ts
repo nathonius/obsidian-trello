@@ -6,7 +6,7 @@ import { TrelloPlugin } from './plugin';
 import { BoardSelectModal } from './modal';
 
 export class TrelloSettings extends PluginSettingTab {
-  private readonly boardSelectModal = new BoardSelectModal(this.plugin, this.plugin.app);
+  private readonly boardSelectModal = new BoardSelectModal(this.plugin.app, this.plugin);
   constructor(app: App, private readonly plugin: TrelloPlugin) {
     super(app, plugin);
   }

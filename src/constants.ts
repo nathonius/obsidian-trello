@@ -29,6 +29,13 @@ export const TRELLO_ERRORS = {
 
 export const DEFAULT_SETTINGS: PluginSettings = {
   token: '',
+  customUi: {
+    comments: true,
+    description: true,
+    labels: true,
+    list: true,
+    title: true
+  },
   selectedBoards: [],
   openToSide: LeafSide.Right,
   newCardPosition: CardPosition.Top,

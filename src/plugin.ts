@@ -15,7 +15,7 @@ import { LeafSide, MetaEditApi, PluginData, PluginError, TrelloBoard, TrelloCard
 import { TrelloAPI } from './api';
 import { TrelloSettings } from './settings';
 import { PluginState } from './state';
-import { CardSuggestModal, BoardSuggestModal, CardCreateModal, ListSuggestModal } from './modal';
+import { CardSuggestModal, BoardSuggestModal, CardCreateModal, ListSuggestModal, CustomizeUIModal } from './modal';
 import { TrelloView } from './view/view';
 
 export class TrelloPlugin extends Plugin {
@@ -24,9 +24,10 @@ export class TrelloPlugin extends Plugin {
   view!: TrelloView;
   destroy = new Subject<void>();
   readonly boardSuggestModal = new BoardSuggestModal(this.app);
-  readonly listSuggestModal = new ListSuggestModal(this.app);
-  readonly cardSuggestModal = new CardSuggestModal(this.app);
   readonly cardCreateModal = new CardCreateModal(this.app, this);
+  readonly cardSuggestModal = new CardSuggestModal(this.app);
+  readonly customizeUIModal = new CustomizeUIModal(this.app, this);
+  readonly listSuggestModal = new ListSuggestModal(this.app);
 
   get metaEditAvailable(): boolean {
     const available = !!(this.app as any).plugins.plugins['metaedit'];
