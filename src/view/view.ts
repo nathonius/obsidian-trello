@@ -127,6 +127,9 @@ export class TrelloView extends ItemView {
     this.renderNavButton(buttons, 'Unlink card', 'trash', () => {
       this.plugin.disconnectTrelloCard();
     });
+    this.renderNavButton(buttons, 'Customize UI', 'gear', () => {
+      this.plugin.customizeUIModal.open();
+    });
   }
 
   /**

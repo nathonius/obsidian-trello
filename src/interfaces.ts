@@ -9,6 +9,13 @@ export interface PluginData {
 
 export interface PluginSettings {
   token: string;
+  customUi: {
+    comments: boolean;
+    description: boolean;
+    labels: boolean;
+    list: boolean;
+    title: boolean;
+  };
   selectedBoards: TrelloBoard[];
   openToSide: LeafSide;
   newCardPosition: CardPosition;

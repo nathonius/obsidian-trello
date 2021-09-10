@@ -11,7 +11,7 @@ export class BoardSelectModal extends Modal {
     map((settings) => (settings.selectedBoards ? settings.selectedBoards : []))
   );
   private newState: Record<string, TrelloBoard> = {};
-  constructor(private readonly plugin: TrelloPlugin, app: App) {
+  constructor(app: App, private readonly plugin: TrelloPlugin) {
     super(app);
   }
 
