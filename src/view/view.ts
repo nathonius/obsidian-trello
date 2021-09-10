@@ -182,9 +182,12 @@ export class TrelloView extends ItemView {
   private renderLabels(card: TrelloCard, parent: HTMLElement): void {
     card.labels.forEach((label) => {
       if (label.color) {
-        parent.createSpan({
-          cls: `trello-label trello-color--${label.color}`,
+        const wrapper = parent.createDiv({
+          cls: `trello-label-wrapper`,
           attr: { 'aria-label': label.name !== '' ? label.name : null }
+        });
+        wrapper.createSpan({
+          cls: `trello-label trello-color--${label.color}`
         });
       }
     });

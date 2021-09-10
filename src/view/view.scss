@@ -41,8 +41,14 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, 40px);
     grid-gap: 4px;
-    margin-top: 6px;
-    margin-bottom: 8px;
+    margin-top: 4px;
+    margin-bottom: 6px;
+
+    .trello-label-wrapper {
+      height: 18px;
+      display: flex;
+      align-items: center;
+    }
 
     .trello-label {
       height: 8px;
