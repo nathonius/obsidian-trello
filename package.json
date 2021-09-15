@@ -8,7 +8,7 @@
   },
   "main": "main.js",
   "scripts": {
-    "dev": "rollup --config rollup.config.js -w",
+    "dev": "rollup --config rollup.config.js",
     "build": "rollup --config rollup.config.js --environment BUILD:production",
     "prepare": "husky install"
   },
@@ -20,6 +20,7 @@
     "@rollup/plugin-node-resolve": "^11.2.1",
     "@rollup/plugin-typescript": "^8.2.1",
     "@types/node": "^14.14.37",
+    "@types/uuid": "^8.3.1",
     "@typescript-eslint/eslint-plugin": "^4.31.0",
     "@typescript-eslint/parser": "^4.31.0",
     "eslint": "^7.32.0",
@@ -36,7 +37,8 @@
     "typescript": "^4.3.5"
   },
   "dependencies": {
-    "rxjs": "^7.3.0"
+    "rxjs": "^7.3.0",
+    "uuid": "^8.3.2"
   },
   "lint-staged": {
     "*.ts": "eslint --cache --fix",
