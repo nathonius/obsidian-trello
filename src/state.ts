@@ -1,5 +1,7 @@
 import { BehaviorSubject, map, Observable, takeUntil } from 'rxjs';
+import { DEFAULT_DATA } from './constants';
 import {
+  PluginConnectedCard,
   PluginData,
   PluginSettings,
   TrelloAction,
@@ -16,7 +18,7 @@ export class PluginState {
   readonly cardActionsCache: TrelloItemCache<TrelloAction[]> = {};
   readonly listCache: TrelloItemCache<TrelloList> = {};
   readonly labelCache: TrelloItemCache<TrelloLabel[]> = {};
-  readonly boardCardId = new BehaviorSubject<string | null>(null);
+  readonly connectedCardId = new BehaviorSubject<string | null>(null);
   readonly currentToken = new BehaviorSubject<string>('');
   readonly verboseLogging = new BehaviorSubject<boolean>(false);
 
@@ -34,13 +36,31 @@ export class PluginState {
     return this.data.pipe(map((data) => data.settings));
   }
 
+  get connectedCards(): Record<string, PluginConnectedCard> {
+    return this.data.value.connectedCards;
+  }
+
   updateSetting<K extends keyof PluginSettings>(key: K, value: PluginSettings[K]): void {
     const newSettings = { ...this.data.value.settings };
     newSettings[key] = value;
     this.data.next({ ...this.data.value, settings: newSettings });
   }
 
+  updateConnectedCard(id: string, value: PluginConnectedCard | null): void {
+    const newCards = { ...this.data.value.connectedCards };
+    if (value) {
+      newCards[id] = value;
+    } else {
+      delete newCards[id];
+    }
+    this.data.next({ ...this.data.value, connectedCards: newCards });
+  }
+
   completedFirstRun(): void {
     this.data.next({ ...this.data.value, firstRun: false });
+  }
+
+  updateVersion(): void {
+    this.data.next({ ...this.data.value, version: DEFAULT_DATA.version });
   }
 }

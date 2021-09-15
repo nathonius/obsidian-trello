@@ -27,14 +27,17 @@ export const TRELLO_ERRORS = {
   other: 'The Trello API could not be reached. Please create a new token or try again later.'
 };
 
+export const GLOBAL_UI = 'global';
 export const DEFAULT_SETTINGS: PluginSettings = {
   token: '',
   customUi: {
-    comments: true,
-    description: true,
-    labels: true,
-    list: true,
-    title: true
+    global: {
+      comments: true,
+      description: true,
+      labels: true,
+      list: true,
+      title: true
+    }
   },
   selectedBoards: [],
   openToSide: LeafSide.Right,
@@ -46,14 +49,19 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 export const DEFAULT_DATA: PluginData = {
   settings: DEFAULT_SETTINGS,
   version: '1.2.0',
-  firstRun: true
+  firstRun: true,
+  connectedCards: {}
 };
 
 export enum MetaKey {
-  BoardCard = 'trello_board_card_id'
+  BoardCard = 'trello_board_card_id',
+  TrelloId = 'trello_plugin_note_id'
 }
 
 export const NEW_TRELLO_CARD: TrelloCard = {
   name: 'Create a new card...',
   id: 'CREATE_NEW_TRELLO_CARD'
 } as TrelloCard;
+
+// Milliseconds to wait between meta updates
+export const METAEDIT_DEBOUNCE = 30;

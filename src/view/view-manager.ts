@@ -27,12 +27,12 @@ export class TrelloViewManager {
     private readonly update: Observable<void>
   ) {
     // Update card when the current ID changes
-    this.plugin.state.boardCardId
+    this.plugin.state.connectedCardId
       .pipe(
         takeUntil(this.destroy),
-        tap((boardCard) => {
+        tap((connected) => {
           // If there is no card associated with this list, reset everything
-          if (!boardCard) {
+          if (!connected) {
             this.cardError = null;
             this.actionsError = null;
             this.listError = null;
@@ -41,12 +41,13 @@ export class TrelloViewManager {
             this.currentList.next(null);
           }
         }),
-        filter((boardCard) => boardCard !== null && boardCard !== ''),
-        switchMap((boardCard) => {
-          this.plugin.log(`View Manager - Got new board/card ID ${boardCard}`);
+        filter((connected) => connected !== null && connected !== ''),
+        switchMap((connected) => {
+          this.plugin.log(`View Manager - Connected card with ${connected}`);
+          const { boardId, cardId } = this.plugin.state.connectedCards[connected!];
+          this.plugin.log(`-> Got new board/card ID ${boardId}/${cardId}`);
           this.plugin.log('-> Getting card from API/cache.');
           // Get card from cache/api
-          const [boardId, cardId] = boardCard!.split(';');
           return this.plugin.api.getCardFromBoard(boardId, cardId);
         })
       )
