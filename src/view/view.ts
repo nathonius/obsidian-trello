@@ -302,7 +302,7 @@ export class TrelloView extends ItemView {
   /**
    * Render a specific header button.
    */
-  private renderNavButton(parent: HTMLElement, label: string, icon: string, callback: () => any) {
+  private renderNavButton(parent: HTMLElement, label: string, icon: string, callback: () => void) {
     const button = parent.createDiv({
       cls: 'nav-action-button',
       attr: { 'aria-label': label }
