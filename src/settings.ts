@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import { take } from 'rxjs/operators';
-import { TRELLO_TOKEN_URL } from './constants';
+import { GLOBAL_UI, TRELLO_TOKEN_URL } from './constants';
 import { CardPosition, LeafSide, PluginSettings } from './interfaces';
 import { TrelloPlugin } from './plugin';
 import { BoardSelectModal } from './modal';
@@ -20,6 +20,7 @@ export class TrelloSettings extends PluginSettingTab {
     // Build settings
     this.plugin.state.settings.pipe(take(1)).subscribe((settings) => {
       this.buildTokenSetting(this.containerEl, settings);
+      this.buildUiConfigSetting(this.containerEl);
       this.buildBoardSelectSetting(this.containerEl);
       this.buildOpenToSideSetting(this.containerEl, settings);
       this.buildNewCardPositionSetting(this.containerEl, settings);
@@ -43,6 +44,19 @@ export class TrelloSettings extends PluginSettingTab {
           .onChange((value: string) => {
             this.plugin.state.updateSetting('token', value.trim());
           });
+      });
+  }
+
+  private buildUiConfigSetting(containerEl: HTMLElement): void {
+    this.plugin.log('-> Adding UI config setting');
+    new Setting(containerEl)
+      .setName('Customize UI')
+      .setDesc('Configure which parts of connected trello cards are displayed by default. Can be overridden per note.')
+      .addButton((button) => {
+        button.setButtonText('Configure').onClick(() => {
+          this.plugin.customizeUIModal.source.next(GLOBAL_UI);
+          this.plugin.customizeUIModal.open();
+        });
       });
   }
 

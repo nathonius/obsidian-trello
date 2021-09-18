@@ -1,7 +1,8 @@
-import { BehaviorSubject, forkJoin, Observable } from 'rxjs';
-import { concatMap, filter, finalize, map, switchMap, take, takeUntil, tap } from 'rxjs/operators';
+import { BehaviorSubject, forkJoin, Observable, combineLatest, of } from 'rxjs';
+import { concatMap, filter, finalize, switchMap, take, takeUntil, tap, map, mergeMap } from 'rxjs/operators';
 import { TrelloPlugin } from '../plugin';
-import { PluginError, TrelloAction, TrelloCard, TrelloList } from '../interfaces';
+import { PluginError, PluginUISettings, TrelloAction, TrelloCard, TrelloList } from '../interfaces';
+import { GLOBAL_UI } from 'src/constants';
 
 /**
  * Provides state and error handling for the view.
@@ -17,9 +18,11 @@ export class TrelloViewManager {
   listError: PluginError | null = null;
 
   // Data
+  readonly connectedId = new BehaviorSubject<string | null>(null);
   readonly currentCard = new BehaviorSubject<TrelloCard | null>(null);
   readonly currentActions = new BehaviorSubject<TrelloAction[] | null>(null);
   readonly currentList = new BehaviorSubject<TrelloList | null>(null);
+  readonly currentUIConfig = new BehaviorSubject<PluginUISettings | null>(null);
 
   constructor(
     private readonly plugin: TrelloPlugin,
@@ -27,6 +30,7 @@ export class TrelloViewManager {
     private readonly update: Observable<void>
   ) {
     // Update card when the current ID changes
+
     this.plugin.state.connectedCardId
       .pipe(
         takeUntil(this.destroy),
@@ -39,10 +43,19 @@ export class TrelloViewManager {
             this.currentCard.next(null);
             this.currentActions.next(null);
             this.currentList.next(null);
+            this.currentUIConfig.next(null);
           }
+          this.connectedId.next(connected);
         }),
         filter((connected) => connected !== null && connected !== ''),
-        switchMap((connected) => {
+        mergeMap((connected) =>
+          combineLatest([of(connected), this.plugin.state.settings.pipe(map((s) => s.customUi))])
+        ),
+        switchMap(([connected, customUiSettings]) => {
+          const uiConfig = customUiSettings[connected as string]
+            ? customUiSettings[connected as string]
+            : customUiSettings[GLOBAL_UI];
+          this.currentUIConfig.next(uiConfig);
           this.plugin.log(`View Manager - Connected card with ${connected}`);
           const { boardId, cardId } = this.plugin.state.connectedCards[connected!];
           this.plugin.log(`-> Got new board/card ID ${boardId}/${cardId}`);

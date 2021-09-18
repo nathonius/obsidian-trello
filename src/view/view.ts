@@ -2,7 +2,7 @@ import { ItemView, Notice, setIcon, WorkspaceLeaf } from 'obsidian';
 import { combineLatest, Subject } from 'rxjs';
 import { takeUntil, tap } from 'rxjs/operators';
 import { CUSTOM_ICONS, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from '../constants';
-import { PluginError, TrelloAction, TrelloCard, TrelloList } from '../interfaces';
+import { PluginError, PluginUISettings, TrelloAction, TrelloCard, TrelloList } from '../interfaces';
 import { TrelloPlugin } from '../plugin';
 import { TrelloViewManager } from './view-manager';
 
@@ -15,9 +15,14 @@ export class TrelloView extends ItemView {
     super(leaf);
 
     // Re-render whenever state changes
-    combineLatest([this.viewManager.currentCard, this.viewManager.currentActions, this.viewManager.currentList])
+    combineLatest([
+      this.viewManager.currentCard,
+      this.viewManager.currentActions,
+      this.viewManager.currentList,
+      this.viewManager.currentUIConfig
+    ])
       .pipe(takeUntil(this.destroy))
-      .subscribe(([card, actions, list]) => {
+      .subscribe(([card, actions, list, uiConfig]) => {
         this.contentEl.empty();
         const errors = [this.viewManager.cardError, this.viewManager.actionsError, this.viewManager.listError];
         if (errors.some((err) => err !== null)) {
@@ -25,7 +30,7 @@ export class TrelloView extends ItemView {
         } else if (card === null) {
           this.renderEmptyView(null);
         } else {
-          this.renderConnectedView(card, actions, list);
+          this.renderConnectedView(card, actions, list, uiConfig);
         }
       });
   }
@@ -38,13 +43,20 @@ export class TrelloView extends ItemView {
     return TRELLO_VIEW_TYPE;
   }
 
-  getIcon() {
+  getIcon(): string {
     return CUSTOM_ICONS.trello.id;
   }
 
-  onunload() {
+  onunload(): void {
     this.destroy.next();
     this.destroy.complete();
+  }
+
+  /**
+   * Force a refresh of the current card
+   */
+  updateCard(): void {
+    this.update.next();
   }
 
   private renderPaneContainer(): HTMLDivElement {
@@ -99,17 +111,34 @@ export class TrelloView extends ItemView {
   /**
    * After getting all data, render it into a usable form.
    */
-  private renderConnectedView(card: TrelloCard, actions: TrelloAction[] | null, list: TrelloList | null): void {
+  private renderConnectedView(
+    card: TrelloCard,
+    actions: TrelloAction[] | null,
+    list: TrelloList | null,
+    uiConfig: PluginUISettings | null
+  ): void {
     this.renderHeader(this.contentEl);
     const pane = this.renderPaneContainer();
-    const cardInfo = pane.createDiv('trello-pane--card-info');
-    this.renderCardInfo(card, list, cardInfo);
-    if (card.labels && card.labels.length > 0) {
+    if (uiConfig?.list || uiConfig?.title || uiConfig?.description) {
+      const cardInfo = pane.createDiv('trello-pane--card-info');
+      if (uiConfig?.list && list) {
+        this.renderCardList(list, cardInfo);
+      }
+      if (uiConfig.title) {
+        this.renderCardTitle(card, cardInfo);
+      }
+      if (uiConfig.description && card.desc) {
+        this.renderCardDesc(card, cardInfo);
+      }
+    }
+    if (uiConfig?.labels && card.labels && card.labels.length > 0) {
       const labelSectionContainer = pane.createDiv('trello-pane--label-section');
       this.renderLabels(card, labelSectionContainer);
     }
-    const commentSectionContainer = pane.createDiv('trello-pane--comment-section');
-    this.renderCommentSection(card, actions, commentSectionContainer);
+    if (uiConfig?.comments) {
+      const commentSectionContainer = pane.createDiv('trello-pane--comment-section');
+      this.renderCommentSection(card, actions, commentSectionContainer);
+    }
   }
 
   /**
@@ -128,55 +157,63 @@ export class TrelloView extends ItemView {
       this.plugin.disconnectTrelloCard();
     });
     this.renderNavButton(buttons, 'Customize UI', 'gear', () => {
+      this.plugin.customizeUIModal.source.next(this.viewManager.connectedId.value);
       this.plugin.customizeUIModal.open();
     });
   }
 
   /**
-   * Renders the name of the list and card as well as card description.
+   * Renders the name of the list which can be used to move the card to another list
    */
-  private renderCardInfo(card: TrelloCard, list: TrelloList | null, parent: HTMLElement): void {
-    if (list) {
-      const listName = parent.createEl('a', {
-        cls: 'trello-pane--card-info--list',
-        text: list.name,
-        attr: {
-          'aria-label': 'Move card',
-          href: '#'
-        }
-      });
-      const listIcon = listName.createSpan();
-      setIcon(listIcon, 'right-arrow-with-tail');
-      listName.addEventListener('click', () => {
-        this.viewManager.moveCard();
-      });
-    }
+  private renderCardList(list: TrelloList, parent: HTMLElement): void {
+    const listName = parent.createEl('a', {
+      cls: 'trello-pane--card-info--list',
+      text: list.name,
+      attr: {
+        'aria-label': 'Move card',
+        href: '#'
+      }
+    });
+    const listIcon = listName.createSpan();
+    setIcon(listIcon, 'right-arrow-with-tail');
+    listName.addEventListener('click', () => {
+      this.viewManager.moveCard();
+    });
+  }
+
+  /**
+   * Renders the name of the card
+   */
+  private renderCardTitle(card: TrelloCard, parent: HTMLElement): void {
     const cardName = parent.createEl('h3', { text: card.name });
     const cardLink = cardName.createEl('a', {
       attr: { href: card.url, 'aria-label': 'View on Trello' }
     });
     setIcon(cardLink, 'navigate-glyph', 24);
+  }
 
-    if (card.desc) {
-      const descContainer = parent.createDiv('trello-card-desc--container');
-      const collapseButton = descContainer.createEl('a', {
-        text: 'Description',
-        cls: 'trello-card-desc--collapse',
-        href: '#'
-      });
-      const collapseIcon = collapseButton.createSpan('trello-card-desc--collapse-icon');
-      setIcon(collapseIcon, 'down-chevron-glyph');
-      const description = descContainer.createDiv({ text: card.desc, cls: 'trello-card-desc--desc' });
-      collapseButton.addEventListener('click', () => {
-        if (description.style.maxHeight) {
-          description.style.maxHeight = '';
-          setIcon(collapseIcon, 'down-chevron-glyph');
-        } else {
-          description.style.maxHeight = description.scrollHeight + 'px';
-          setIcon(collapseIcon, 'up-chevron-glyph');
-        }
-      });
-    }
+  /**
+   * Renders the card description.
+   */
+  private renderCardDesc(card: TrelloCard, parent: HTMLElement): void {
+    const descContainer = parent.createDiv('trello-card-desc--container');
+    const collapseButton = descContainer.createEl('a', {
+      text: 'Description',
+      cls: 'trello-card-desc--collapse',
+      href: '#'
+    });
+    const collapseIcon = collapseButton.createSpan('trello-card-desc--collapse-icon');
+    setIcon(collapseIcon, 'down-chevron-glyph');
+    const description = descContainer.createDiv({ text: card.desc, cls: 'trello-card-desc--desc' });
+    collapseButton.addEventListener('click', () => {
+      if (description.style.maxHeight) {
+        description.style.maxHeight = '';
+        setIcon(collapseIcon, 'down-chevron-glyph');
+      } else {
+        description.style.maxHeight = description.scrollHeight + 'px';
+        setIcon(collapseIcon, 'up-chevron-glyph');
+      }
+    });
   }
 
   /**
