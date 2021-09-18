@@ -4,6 +4,7 @@ import {
   PluginConnectedCard,
   PluginData,
   PluginSettings,
+  PluginUISettings,
   TrelloAction,
   TrelloCard,
   TrelloItemCache,
@@ -54,6 +55,16 @@ export class PluginState {
       delete newCards[id];
     }
     this.data.next({ ...this.data.value, connectedCards: newCards });
+  }
+
+  updateCustomUI(id: string, config: PluginUISettings | null): void {
+    const newCustomUIConfig = { ...this.data.value.settings.customUi };
+    if (config) {
+      newCustomUIConfig[id] = config;
+    } else {
+      delete newCustomUIConfig[id];
+    }
+    this.updateSetting('customUi', newCustomUIConfig);
   }
 
   completedFirstRun(): void {
