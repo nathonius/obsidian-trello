@@ -288,17 +288,24 @@ export class TrelloPlugin extends Plugin {
   /**
    * Removes the trello frontmatter property from the current file.
    */
-  disconnectTrelloCard(): void {
+  async disconnectTrelloCard(): Promise<void> {
     const view = this.app.workspace.activeLeaf?.view;
 
     if (view instanceof FileView && this.metaEdit.available) {
-      from(this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, view.file)).subscribe((existing) => {
-        if (existing) {
-          this.log('TrelloPlugin.disconnectTrelloCard', 'Disconnecting trello connected card.');
-          this.metaEdit.plugin.deleteProperty(MetaKey.TrelloId, view.file);
-          this.state.connectedCardId.next(null);
-        }
-      });
+      this.log('TrelloPlugin.disconnectTrelloCard', 'Disconnecting trello connected card.');
+
+      const existingPluginId = await this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, view.file);
+      if (existingPluginId) {
+        await this.metaEdit.plugin.deleteProperty(MetaKey.TrelloId, view.file);
+        await new Promise((resolve) => window.setTimeout(resolve, METAEDIT_DEBOUNCE));
+        this.state.updateConnectedCard(existingPluginId, null);
+        this.state.connectedCardId.next(null);
+        this.log('TrelloPlugin.disconnectTrelloCard', '-> Removed plugin ID.');
+      }
+
+      await this.metaEdit.plugin.deleteProperty(MetaKey.BoardCard, view.file);
+      this.state.boardCardId.next(null);
+      this.log('TrelloPlugin.disconnectTrelloCard', '-> Removed board/card ID.');
     }
   }
 
