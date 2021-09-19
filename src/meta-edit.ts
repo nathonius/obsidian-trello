@@ -11,7 +11,7 @@ export class MetaEditWrapper {
   get available(): boolean {
     const available = !!(this.trelloPlugin.app as any).plugins.plugins['metaedit'];
     if (!available) {
-      this.trelloPlugin.log('MetaEdit not available.', LogLevel.Error);
+      this.trelloPlugin.log('MetaEditWrapper.available', 'MetaEdit not available.', LogLevel.Error);
       new Notice(TRELLO_ERRORS.metaEdit);
     }
     return available;
@@ -33,8 +33,16 @@ export class MetaEditWrapper {
     return from(this.plugin.getPropertyValue(key, file)).pipe(
       concatMap((existing) => {
         if (existing) {
+          this.trelloPlugin.log(
+            'MetaEditWrapper.updateOrCreateMeta',
+            `Updating existing meta key ${key} with value ${value} in file ${file.name}`
+          );
           return from(this.plugin.update(key, value, file));
         } else {
+          this.trelloPlugin.log(
+            'MetaEditWrapper.updateOrCreateMeta',
+            `Adding new meta key ${key} with value ${value} in file ${file.name}`
+          );
           return from(this.plugin.createYamlProperty(key, value, file));
         }
       })

@@ -24,15 +24,15 @@ export class CustomizeUIModal extends Modal {
       .pipe(
         map(({ customUi, source }) => {
           if (customUi[source as string]) {
-            this.plugin.log(`Customizing ui config for trello ID ${source}`);
+            this.plugin.log('CustomizeUIModal', `Customizing ui config for trello ID ${source}`);
             return customUi[source as string];
           }
-          this.plugin.log('Customizing global UI config');
+          this.plugin.log('CustomizeUIModal', 'Customizing global UI config');
           return customUi[GLOBAL_UI];
         })
       )
       .subscribe((settings) => {
-        this.plugin.log('Building Customize UI modal');
+        this.plugin.log('CustomizeUIModal', 'Building Customize UI modal');
         const source = this.source.value;
         this.contentEl.empty();
         this.newState = { ...settings };
@@ -57,7 +57,7 @@ export class CustomizeUIModal extends Modal {
         if (source !== GLOBAL_UI) {
           const resetButton = controls.createEl('button', { text: 'Reset to Default' });
           resetButton.addEventListener('click', () => {
-            this.plugin.log(`Resetting UI config for trello ID ${source}`);
+            this.plugin.log('CustomizeUIModal', `Resetting UI config for trello ID ${source}`);
             this.plugin.state.updateCustomUI(source as string, null);
             this.plugin.view.updateCard();
             this.close();
@@ -65,7 +65,7 @@ export class CustomizeUIModal extends Modal {
         }
         const saveButton = controls.createEl('button', { text: 'Save', cls: 'mod-cta' });
         saveButton.addEventListener('click', () => {
-          this.plugin.log(`Saving UI config for trello ID ${source}`);
+          this.plugin.log('CustomizeUIModal', `Saving UI config for trello ID ${source}`);
           this.plugin.state.updateCustomUI(source as string, this.newState);
           this.close();
         });

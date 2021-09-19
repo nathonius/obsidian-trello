@@ -19,6 +19,7 @@ export class PluginState {
   readonly cardActionsCache: TrelloItemCache<TrelloAction[]> = {};
   readonly listCache: TrelloItemCache<TrelloList> = {};
   readonly labelCache: TrelloItemCache<TrelloLabel[]> = {};
+  readonly boardCardId = new BehaviorSubject<string | null>(null);
   readonly connectedCardId = new BehaviorSubject<string | null>(null);
   readonly currentToken = new BehaviorSubject<string>('');
   readonly verboseLogging = new BehaviorSubject<boolean>(false);
