@@ -55,7 +55,7 @@ export class CustomizeUIModal extends Modal {
         });
         const controls = this.contentEl.createDiv();
         if (source !== GLOBAL_UI) {
-          const resetButton = controls.createEl('button', { text: 'Reset to Default', cls: 'mod-cta' });
+          const resetButton = controls.createEl('button', { text: 'Reset to Default' });
           resetButton.addEventListener('click', () => {
             this.plugin.log(`Resetting UI config for trello ID ${source}`);
             this.plugin.state.updateCustomUI(source as string, null);
