@@ -4,12 +4,14 @@
 
 # npm
 node_modules
-package-lock.json
 
 # build
 main.js
 *.js.map
 styles.css
+
+# lint
+.eslintcache
 
 # obsidian
 data.json

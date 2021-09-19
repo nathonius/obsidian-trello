@@ -5,10 +5,20 @@ export interface PluginData {
   settings: PluginSettings;
   version: string;
   firstRun: boolean;
+  connectedCards: Record<string, PluginConnectedCard>;
+}
+
+export interface PluginUISettings {
+  comments: boolean;
+  description: boolean;
+  labels: boolean;
+  list: boolean;
+  title: boolean;
 }
 
 export interface PluginSettings {
   token: string;
+  customUi: Record<string, PluginUISettings>;
   selectedBoards: TrelloBoard[];
   openToSide: LeafSide;
   newCardPosition: CardPosition;
@@ -22,6 +32,11 @@ export enum PluginError {
   RateLimit = 'RateLimit',
   Unknown = 'Unknown',
   Abort = 'Abort'
+}
+
+export interface PluginConnectedCard {
+  boardId: string;
+  cardId: string;
 }
 
 export enum LeafSide {
@@ -101,6 +116,7 @@ export interface TrelloCard {
   idChecklists: string[];
   labels: TrelloLabel[];
   url: string;
+  pos: number | 'top' | 'bottom';
 }
 
 export enum TrelloActionType {

@@ -1,65 +1,60 @@
 import { FileView, Notice, Plugin, addIcon, TFile, WorkspaceLeaf } from 'obsidian';
-import { forkJoin, from, iif, Observable, of, Subject } from 'rxjs';
-import { take, map, concatMap, tap, takeUntil } from 'rxjs/operators';
+import { concat, forkJoin, from, iif, Observable, of, Subject } from 'rxjs';
+import { take, map, concatMap, tap, takeUntil, delay } from 'rxjs/operators';
+import { v4 as uuid } from 'uuid';
 import {
   CUSTOM_ICONS,
   DEFAULT_DATA,
   DEFAULT_SETTINGS,
   LogLevel,
+  METAEDIT_DEBOUNCE,
   MetaKey,
   NEW_TRELLO_CARD,
   TRELLO_ERRORS,
   TRELLO_VIEW_TYPE
 } from './constants';
-import { LeafSide, MetaEditApi, PluginData, PluginError, TrelloBoard, TrelloCard } from './interfaces';
+import { LeafSide, PluginData, PluginError, TrelloBoard, TrelloCard } from './interfaces';
 import { TrelloAPI } from './api';
 import { TrelloSettings } from './settings';
 import { PluginState } from './state';
-import { CardSuggestModal, BoardSuggestModal, CardCreateModal, ListSuggestModal } from './modal';
+import { CardSuggestModal, BoardSuggestModal, CardCreateModal, ListSuggestModal, CustomizeUIModal } from './modal';
 import { TrelloView } from './view/view';
+import { migrations } from './migrations';
+import { MetaEditWrapper } from './meta-edit';
 
 export class TrelloPlugin extends Plugin {
+  metaEdit = new MetaEditWrapper(this);
   api!: TrelloAPI;
   state!: PluginState;
   view!: TrelloView;
   destroy = new Subject<void>();
   readonly boardSuggestModal = new BoardSuggestModal(this.app);
-  readonly listSuggestModal = new ListSuggestModal(this.app);
-  readonly cardSuggestModal = new CardSuggestModal(this.app);
   readonly cardCreateModal = new CardCreateModal(this.app, this);
-
-  get metaEditAvailable(): boolean {
-    const available = !!(this.app as any).plugins.plugins['metaedit'];
-    if (!available) {
-      this.log('MetaEdit not available.', LogLevel.Error);
-      new Notice(TRELLO_ERRORS.metaEdit);
-    }
-    return available;
-  }
-
-  get metaEdit(): MetaEditApi {
-    return {
-      ...(this.app as any).plugins.plugins['metaedit'].api,
-      deleteProperty: this.deleteProperty.bind(this)
-    };
-  }
+  readonly cardSuggestModal = new CardSuggestModal(this.app);
+  customizeUIModal!: CustomizeUIModal;
+  readonly listSuggestModal = new ListSuggestModal(this.app);
 
   async onload(): Promise<void> {
     // Set up data and default data.
     const savedData: PluginData | undefined = await this.loadData();
     const data: PluginData = Object.assign({}, DEFAULT_DATA, savedData);
     data.settings = Object.assign({}, DEFAULT_SETTINGS, savedData?.settings);
+    data.settings.customUi = Object.assign({}, DEFAULT_SETTINGS.customUi, savedData?.settings.customUi);
     this.state = new PluginState(this, data);
 
     // Create new API instance
     this.api = new TrelloAPI(this);
 
+    // Configure custom UI modal
+    this.customizeUIModal = new CustomizeUIModal(this.app, this);
+
     // Add custom icon(s)
     addIcon(CUSTOM_ICONS.trello.id, CUSTOM_ICONS.trello.svgContent);
 
-    // Future: Execute version migrations
-    // if (savedData && savedData.version !== DEFAULT_DATA.version) {
-    // }
+    // Execute version migrations
+    if (savedData && savedData.version !== DEFAULT_DATA.version) {
+      migrations[savedData.version](this);
+    }
 
     // Need some settings synchronously
     this.state.settings.pipe(takeUntil(this.destroy)).subscribe((settings) => {
@@ -109,7 +104,7 @@ export class TrelloPlugin extends Plugin {
     }
   }
 
-  onunload() {
+  onunload(): void {
     // Unsubscribe long-lived listeners
     this.destroy.next();
     this.destroy.complete();
@@ -121,15 +116,15 @@ export class TrelloPlugin extends Plugin {
   /**
    * Open the settings modal to the trello tab
    */
-  openTrelloSettings() {
-    this.log('Opening settings');
+  openTrelloSettings(): void {
+    this.log('TrelloPlugin.openTrelloSettings', 'Opening settings');
     (this.app as any).setting.openTabById('obsidian-trello');
     (this.app as any).setting.open();
   }
 
-  log(message: string, logLevel: LogLevel = LogLevel.Info): void {
+  log(context: string, message: string, logLevel: LogLevel = LogLevel.Info): void {
     if (this.state.verboseLogging.value) {
-      const log = `OBISIDAN-TRELLO: ${message}`;
+      const log = `OBISIDAN-TRELLO: (${context}) ${message}`;
       switch (logLevel) {
         case LogLevel.Warn:
           console.warn(log);
@@ -150,36 +145,34 @@ export class TrelloPlugin extends Plugin {
    */
   private async handleFile(file: TFile | null): Promise<void> {
     // See if we need to do anything
-    if (!file || !this.metaEditAvailable) {
+    if (!file || !this.metaEdit.available) {
       return;
     }
-    const existing = await this.metaEdit.getPropertyValue(MetaKey.BoardCard, file);
-    if (!existing) {
-      this.log('File not trello connected');
+
+    const boardCardId = await this.metaEdit.plugin.getPropertyValue(MetaKey.BoardCard, file);
+    let trelloId = await this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, file);
+
+    if (boardCardId && !trelloId) {
+      // Migrate to add new ID
+      const newId = uuid();
+      const [boardId, cardId] = boardCardId.split(';');
+      await this.metaEdit.plugin.createYamlProperty(MetaKey.TrelloId, newId, file);
+      await new Promise((resolve) => window.setTimeout(resolve, METAEDIT_DEBOUNCE));
+      this.state.updateConnectedCard(newId, { boardId, cardId });
+      trelloId = newId;
+    }
+
+    if (!boardCardId) {
+      this.log('TrelloPlugin.handleFile', 'File not trello connected');
       this.state.boardCardId.next(null);
+      this.state.connectedCardId.next(null);
       return;
     }
 
     // This file is trello connected
-    this.log(`File trello connected, board/card ID ${existing}`);
-    this.state.boardCardId.next(existing);
-  }
-
-  /**
-   * Add or update a frontmatter key to a given file
-   * Make sure not to call this multiple times in a row,
-   * updates can get clobbered.
-   */
-  private updateOrCreateMeta(key: string, value: string, file: TFile): Observable<void> {
-    return from(this.metaEdit.getPropertyValue(key, file)).pipe(
-      concatMap((existing) => {
-        if (existing) {
-          return from(this.metaEdit.update(key, value, file));
-        } else {
-          return from(this.metaEdit.createYamlProperty(key, value, file));
-        }
-      })
-    );
+    this.log('TrelloPlugin.handleFile', `File trello connected, board/card ID ${boardCardId}, plugin ID ${trelloId}`);
+    this.state.boardCardId.next(boardCardId);
+    this.state.connectedCardId.next(trelloId as string);
   }
 
   /**
@@ -192,8 +185,8 @@ export class TrelloPlugin extends Plugin {
     // Might need this later
     let board: TrelloBoard;
 
-    if (view instanceof FileView && this.metaEditAvailable) {
-      this.log('Connecting trello card');
+    if (view instanceof FileView && this.metaEdit.available) {
+      this.log('TrelloPlugin.connectTrelloCard', 'Connecting trello card');
       this.state.settings
         .pipe(
           take(1),
@@ -201,52 +194,90 @@ export class TrelloPlugin extends Plugin {
           // If boards were selected, use those. Otherwise, call API.
           concatMap((boards) => iif(() => boards.length > 0, of(boards), this.api.getBoards())),
           tap(() => {
-            this.log('-> Got boards');
+            this.log('TrelloPlugin.connectTrelloCard', '-> Got boards');
           }),
           // Open board suggestion modal
           concatMap((boards) => this.selectBoard(boards)),
           tap((selectedBoard) => {
-            this.log(`-> Selected board ${selectedBoard.id}`);
+            this.log('TrelloPlugin.connectTrelloCard', `-> Selected board ${selectedBoard.id}`);
             board = selectedBoard;
           }),
           // Get available cards from selected board
           concatMap((selectedBoard) => this.api.getCardsFromBoard(selectedBoard.id)),
           tap((cards) => {
-            this.log(`-> Got ${cards.length} cards.`);
+            this.log('TrelloPlugin.connectTrelloCard', `-> Got ${cards.length} cards.`);
           }),
           // Open card suggestion modal
           concatMap((cards: TrelloCard[]) => this.selectCard(cards)),
           tap((selectedCard: TrelloCard) => {
-            this.log(`-> Selected card ${selectedCard.id}`);
+            this.log('TrelloPlugin.connectTrelloCard', `-> Selected card ${selectedCard.id}`);
           }),
           concatMap((selectedCard: TrelloCard) =>
-            iif(() => selectedCard === NEW_TRELLO_CARD, this.addNewCard(board), of(selectedCard))
+            iif(
+              () => selectedCard === NEW_TRELLO_CARD,
+              this.addNewCard(board).pipe(
+                tap(() => {
+                  this.log('TrelloPlugin.connectTrelloCard', 'Beginning add new card flow.');
+                })
+              ),
+              of(selectedCard).pipe(
+                tap(() => {
+                  this.log('TrelloPlugin.connectTrelloCard', '-> Selected existing card');
+                })
+              )
+            )
           ),
-          map((selected: TrelloCard) => `${selected.idBoard};${selected.id}`),
-          tap((boardCardId: string) => {
-            this.log(`-> Updating file with board/card ID ${boardCardId}`);
+          concatMap((selectedCard: TrelloCard) =>
+            forkJoin({
+              selectedCard: of(selectedCard),
+              existingId: from(this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, view.file))
+            })
+          ),
+          map(({ selectedCard, existingId }: { selectedCard: TrelloCard; existingId: string | undefined }) => {
+            const trelloId = existingId ? existingId : uuid();
+            this.log('TrelloPlugin.connectTrelloCard', `-> Updating file with plugin ID ${trelloId}`);
+            this.state.updateConnectedCard(trelloId, { cardId: selectedCard.id, boardId: selectedCard.idBoard });
+            this.state.connectedCardId.next(trelloId);
+            const boardCardId = `${selectedCard.idBoard};${selectedCard.id}`;
+            this.log('TrelloPlugin.connectTrelloCard', `-> Updating file with board/card ID ${boardCardId}`);
             this.state.boardCardId.next(boardCardId);
+            return { boardCardId, trelloId };
           }),
-          concatMap((boardCardId) => this.updateOrCreateMeta(MetaKey.BoardCard, boardCardId, view.file))
+          concatMap(({ boardCardId, trelloId }: { boardCardId: string; trelloId: string }) =>
+            concat(
+              this.metaEdit.updateOrCreateMeta(MetaKey.TrelloId, trelloId, view.file).pipe(
+                tap(() => {
+                  this.log('TrelloPlugin.connectTrelloCard', '-> Adding plugin ID meta key.');
+                }),
+                delay(METAEDIT_DEBOUNCE)
+              ),
+              this.metaEdit.updateOrCreateMeta(MetaKey.BoardCard, boardCardId, view.file).pipe(
+                tap(() => {
+                  this.log('TrelloPlugin.connectTrelloCard', '-> Adding board/card ID meta key.');
+                })
+              )
+            )
+          )
         )
         .subscribe({
           next: () => {
+            this.log('TrelloPlugin.connectTrelloCard', '-> Done connecting card.');
             this.revealTrelloLeaf(true);
           },
           error: (err) => {
             if (err === PluginError.Abort) {
-              this.log('-> Aborting connect flow.');
+              this.log('TrelloPlugin.connectTrelloCard', '-> Aborting connect flow.');
             } else if (err === PluginError.Unauthorized) {
-              this.log('-> API returned unauthorized.', LogLevel.Error);
+              this.log('TrelloPlugin.connectTrelloCard', '-> API returned unauthorized.', LogLevel.Error);
               new Notice(TRELLO_ERRORS.unauthorized);
             } else if (err === PluginError.RateLimit) {
-              this.log('-> API returned rate limit error.', LogLevel.Error);
+              this.log('TrelloPlugin.connectTrelloCard', '-> API returned rate limit error.', LogLevel.Error);
               new Notice(TRELLO_ERRORS.rateLimit);
             } else if (err === PluginError.NoToken) {
-              this.log('-> No token present.', LogLevel.Error);
+              this.log('TrelloPlugin.connectTrelloCard', '-> No token present.', LogLevel.Error);
               new Notice(TRELLO_ERRORS.noToken);
             } else if (err === PluginError.Unknown) {
-              this.log('-> Caught unknown error.', LogLevel.Error);
+              this.log('TrelloPlugin.connectTrelloCard', '-> Caught unknown error.', LogLevel.Error);
               new Notice(TRELLO_ERRORS.other);
             }
           }
@@ -260,12 +291,12 @@ export class TrelloPlugin extends Plugin {
   disconnectTrelloCard(): void {
     const view = this.app.workspace.activeLeaf?.view;
 
-    if (view instanceof FileView && this.metaEditAvailable) {
-      from(this.metaEdit.getPropertyValue(MetaKey.BoardCard, view.file)).subscribe((existing) => {
+    if (view instanceof FileView && this.metaEdit.available) {
+      from(this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, view.file)).subscribe((existing) => {
         if (existing) {
-          this.log('Disconnecting trello connected card.');
-          this.metaEdit.deleteProperty(MetaKey.BoardCard, view.file);
-          this.state.boardCardId.next(null);
+          this.log('TrelloPlugin.disconnectTrelloCard', 'Disconnecting trello connected card.');
+          this.metaEdit.plugin.deleteProperty(MetaKey.TrelloId, view.file);
+          this.state.connectedCardId.next(null);
         }
       });
     }
@@ -289,7 +320,6 @@ export class TrelloPlugin extends Plugin {
    * card.
    */
   private addNewCard(board: TrelloBoard): Observable<TrelloCard> {
-    this.log('Beginning add new card flow.');
     return forkJoin({
       labels: this.api.getLabelsFromBoard(board.id),
       list: this.api.getListsFromBoard(board.id).pipe(
@@ -303,7 +333,7 @@ export class TrelloPlugin extends Plugin {
       settings: this.state.settings.pipe(take(1))
     }).pipe(
       concatMap(({ labels, list, settings }) => {
-        this.log('-> All add new card observables emitted, setting up card create modal.');
+        this.log('TrelloPlugin.addNewCard', '-> All add new card observables emitted, setting up card create modal.');
         this.cardCreateModal.board = board;
         this.cardCreateModal.list = list;
         this.cardCreateModal.labels = labels;
@@ -320,47 +350,29 @@ export class TrelloPlugin extends Plugin {
    * @param activate if true, reveal the leaf, if false it will only be added
    */
   private revealTrelloLeaf(activate = false): void {
-    this.log('Revealing trello leaf.');
+    this.log('TrelloPlugin.revealTrelloLeaf', 'Revealing trello leaf.');
     const leaves = this.app.workspace.getLeavesOfType(TRELLO_VIEW_TYPE);
 
     if (leaves.length === 0) {
-      this.log('-> No trello leaf found, creating.');
+      this.log('TrelloPlugin.revealTrelloLeaf', '-> No trello leaf found, creating.');
       this.state.settings
         .pipe(
           take(1),
           map((s) => s.openToSide)
         )
         .subscribe((side) => {
-          this.log(`-> Creating leaf on ${side} side.`);
+          this.log('TrelloPlugin.revealTrelloLeaf', `-> Creating leaf on ${side} side.`);
           const leaf =
             side === LeafSide.Right ? this.app.workspace.getRightLeaf(false) : this.app.workspace.getLeftLeaf(false);
           leaf.setViewState({ type: TRELLO_VIEW_TYPE });
           if (activate) {
-            this.log('-> Leaf created, revealing.');
+            this.log('TrelloPlugin.revealTrelloLeaf', '-> Leaf created, revealing.');
             this.app.workspace.revealLeaf(leaf);
           }
         });
     } else if (activate) {
-      this.log('-> Trello leaf found, revealing.');
+      this.log('TrelloPlugin.revealTrelloLeaf', '-> Trello leaf found, revealing.');
       this.app.workspace.revealLeaf(leaves[0]);
-    }
-  }
-
-  // From https://github.com/chhoumann/MetaEdit/blob/master/src/metaController.ts
-  private async deleteProperty(property: string, file: TFile): Promise<void> {
-    if (file) {
-      const fileContent = await this.app.vault.read(file);
-      const splitContent = fileContent.split('\n');
-      const regexp = new RegExp(`^\s*${property}:`);
-
-      const idx = splitContent.findIndex((s) => s.match(regexp));
-      const newFileContent = splitContent
-        .filter((_, i) => {
-          if (i != idx) return true;
-        })
-        .join('\n');
-
-      await this.app.vault.modify(file, newFileContent);
     }
   }
 }

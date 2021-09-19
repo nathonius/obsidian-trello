@@ -1,7 +1,8 @@
-import { BehaviorSubject, forkJoin, Observable } from 'rxjs';
-import { concatMap, filter, finalize, map, switchMap, take, takeUntil, tap } from 'rxjs/operators';
+import { BehaviorSubject, forkJoin, Observable, combineLatest, of } from 'rxjs';
+import { concatMap, filter, finalize, switchMap, take, takeUntil, tap, map, mergeMap } from 'rxjs/operators';
 import { TrelloPlugin } from '../plugin';
-import { PluginError, TrelloAction, TrelloCard, TrelloList } from '../interfaces';
+import { PluginError, PluginUISettings, TrelloAction, TrelloCard, TrelloList } from '../interfaces';
+import { GLOBAL_UI } from 'src/constants';
 
 /**
  * Provides state and error handling for the view.
@@ -17,22 +18,24 @@ export class TrelloViewManager {
   listError: PluginError | null = null;
 
   // Data
+  readonly connectedId = new BehaviorSubject<string | null>(null);
   readonly currentCard = new BehaviorSubject<TrelloCard | null>(null);
   readonly currentActions = new BehaviorSubject<TrelloAction[] | null>(null);
   readonly currentList = new BehaviorSubject<TrelloList | null>(null);
+  readonly currentUIConfig = new BehaviorSubject<PluginUISettings | null>(null);
 
   constructor(
     private readonly plugin: TrelloPlugin,
     private readonly destroy: Observable<void>,
     private readonly update: Observable<void>
   ) {
-    // Update card when the current ID changes
+    // Update card when the current board/card ID changes
     this.plugin.state.boardCardId
       .pipe(
         takeUntil(this.destroy),
-        tap((boardCard) => {
+        tap((boardCardId) => {
           // If there is no card associated with this list, reset everything
-          if (!boardCard) {
+          if (!boardCardId) {
             this.cardError = null;
             this.actionsError = null;
             this.listError = null;
@@ -41,12 +44,12 @@ export class TrelloViewManager {
             this.currentList.next(null);
           }
         }),
-        filter((boardCard) => boardCard !== null && boardCard !== ''),
-        switchMap((boardCard) => {
-          this.plugin.log(`View Manager - Got new board/card ID ${boardCard}`);
-          this.plugin.log('-> Getting card from API/cache.');
+        filter((boardCardId) => boardCardId !== null && boardCardId !== ''),
+        switchMap((boardCardId) => {
+          const [boardId, cardId] = boardCardId!.split(';');
+          this.plugin.log('TrelloViewManager', `-> Got new board/card ID ${boardId}/${cardId}`);
+          this.plugin.log('TrelloViewManager', '-> Getting card from API/cache.');
           // Get card from cache/api
-          const [boardId, cardId] = boardCard!.split(';');
           return this.plugin.api.getCardFromBoard(boardId, cardId);
         })
       )
@@ -54,18 +57,42 @@ export class TrelloViewManager {
         next: (card) => {
           // If card has changed, reset the actions and list to avoid inaccurate renders
           if (this.currentCard.value !== null && this.currentCard.value.id !== card.id) {
-            this.plugin.log('View Manager - Card changed, resetting extra info.');
+            this.plugin.log('TrelloViewManager', 'Card changed, resetting extra info.');
             this.currentActions.next(null);
             this.currentList.next(null);
           }
           this.cardError = null;
-          this.plugin.log('-> Card updated.');
+          this.plugin.log('TrelloViewManager', '-> Card updated.');
           this.currentCard.next(card);
         },
         error: (err: PluginError) => {
           this.cardError = err;
           this.currentCard.next(null);
         }
+      });
+
+    // Update card UI when the current plugin ID changes
+    this.plugin.state.connectedCardId
+      .pipe(
+        takeUntil(this.destroy),
+        tap((connected) => {
+          if (!connected) {
+            this.connectedId.next(null);
+            this.currentUIConfig.next(null);
+          }
+        }),
+        filter((connected) => connected !== null && connected !== ''),
+        tap((connected) => {
+          this.connectedId.next(connected);
+        }),
+        mergeMap((connected) => combineLatest([of(connected), this.plugin.state.settings.pipe(map((s) => s.customUi))]))
+      )
+      .subscribe(([connected, customUiSettings]) => {
+        const uiConfig = customUiSettings[connected as string]
+          ? customUiSettings[connected as string]
+          : customUiSettings[GLOBAL_UI];
+        this.currentUIConfig.next(uiConfig);
+        this.plugin.log('TrelloViewManager', `Connected card with ${connected}`);
       });
 
     // Update actions
@@ -80,7 +107,7 @@ export class TrelloViewManager {
       )
       .subscribe({
         next: (actions) => {
-          this.plugin.log('View Manager - Actions updated.');
+          this.plugin.log('TrelloViewManager', 'Actions updated.');
           this.actionsError = null;
           this.currentActions.next(actions);
         },
@@ -102,7 +129,7 @@ export class TrelloViewManager {
       )
       .subscribe({
         next: (list) => {
-          this.plugin.log('View Manager - List updated.');
+          this.plugin.log('TrelloViewManager', 'List updated.');
           this.listError = null;
           this.currentList.next(list);
         },
@@ -118,7 +145,7 @@ export class TrelloViewManager {
         takeUntil(this.destroy),
         filter(() => this.currentCard.value !== null),
         tap(() => {
-          this.plugin.log('View Manager - Refreshing data.');
+          this.plugin.log('TrelloViewManager', 'Refreshing data.');
           this.bypassActionCache = true;
           this.bypassListCache = true;
         }),
@@ -131,7 +158,7 @@ export class TrelloViewManager {
         next: (card) => {
           this.cardError = null;
           if (card) {
-            this.plugin.log('-> Got updated card.');
+            this.plugin.log('TrelloViewManager', '-> Got updated card.');
             this.currentCard.next(card);
           }
         },
@@ -148,13 +175,13 @@ export class TrelloViewManager {
    */
   moveCard(): void {
     if (this.currentCard.value && this.currentList.value) {
-      this.plugin.log('View Manager - Beginning move card flow');
+      this.plugin.log('TrelloViewManager.moveCard', 'Beginning move card flow');
       const card = this.currentCard.value;
       const currentList = this.currentList.value;
       forkJoin({
         list: this.plugin.api.getListsFromBoard(card.idBoard).pipe(
           map((lists) => {
-            this.plugin.log('-> Marking current list.');
+            this.plugin.log('TrelloViewManager.moveCard', '-> Marking current list.');
             const current = lists.find((l) => l.id === currentList.id);
             if (current) {
               current.name = `${current.name} (current list)`;
@@ -162,28 +189,28 @@ export class TrelloViewManager {
             return lists;
           }),
           concatMap((lists) => {
-            this.plugin.log('-> Got all lists for board.');
+            this.plugin.log('TrelloViewManager.moveCard', '-> Got all lists for board.');
             this.plugin.listSuggestModal.options = lists;
             this.plugin.listSuggestModal.open();
             return this.plugin.listSuggestModal.selected;
           }),
           take(1),
           tap((newList) => {
-            this.plugin.log(`-> Selected list ${newList.id}. Updating card.`);
+            this.plugin.log('TrelloViewManager.moveCard', `-> Selected list ${newList.id}. Updating card.`);
           })
         ),
         position: this.plugin.state.settings.pipe(
           take(1),
           map((s) => s.movedCardPosition),
           tap((position) => {
-            this.plugin.log(`-> Moved card position: ${position}`);
+            this.plugin.log('TrelloViewManager.moveCard', `-> Moved card position: ${position}`);
           })
         )
       })
         .pipe(concatMap(({ list, position }) => this.plugin.api.updateCardList(card.id, list.id, position)))
         .subscribe({
           next: (updatedCard) => {
-            this.plugin.log('-> Updated card.');
+            this.plugin.log('TrelloViewManager.moveCard', '-> Updated card.');
             this.currentCard.next(updatedCard);
           },
           error: (err: PluginError) => {
