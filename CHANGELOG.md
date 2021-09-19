@@ -1,3 +1,20 @@
+# v1.3.0
+
+## Features
+
+- Add global setting and per-note settings for UI customization
+- Use text color variable for trello color theming
+- Increase hoverable area for labels
+- Hide description section when card has no description
+
+## Fixes
+
+- When moving cards between lists, respect the position selected in plugin settings
+
+## Notes
+
+- This release will add a new YAML frontmatter key to each connected file. This is used for customizing the UI for each note.
+
 # v1.2.0
 
 ## Features

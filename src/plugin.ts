@@ -124,7 +124,7 @@ export class TrelloPlugin extends Plugin {
 
   log(context: string, message: string, logLevel: LogLevel = LogLevel.Info): void {
     if (this.state.verboseLogging.value) {
-      const log = `OBISIDAN-TRELLO: ${context} ${message}`;
+      const log = `OBISIDAN-TRELLO: (${context}) ${message}`;
       switch (logLevel) {
         case LogLevel.Warn:
           console.warn(log);
