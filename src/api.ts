@@ -284,7 +284,7 @@ export class TrelloAPI {
    */
   updateCardList(cardId: string, idList: string, position: CardPosition = CardPosition.Top): Observable<TrelloCard> {
     this.plugin.log('API - updateCardList');
-    return this.updateCard({ id: cardId, idList });
+    return this.updateCard({ id: cardId, idList, pos: position });
   }
 
   /**
