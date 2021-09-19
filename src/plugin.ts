@@ -13,7 +13,7 @@ import {
   TRELLO_ERRORS,
   TRELLO_VIEW_TYPE
 } from './constants';
-import { LeafSide, MetaEditApi, PluginData, PluginError, TrelloBoard, TrelloCard } from './interfaces';
+import { LeafSide, PluginData, PluginError, TrelloBoard, TrelloCard } from './interfaces';
 import { TrelloAPI } from './api';
 import { TrelloSettings } from './settings';
 import { PluginState } from './state';

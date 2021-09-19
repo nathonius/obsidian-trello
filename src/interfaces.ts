@@ -116,6 +116,7 @@ export interface TrelloCard {
   idChecklists: string[];
   labels: TrelloLabel[];
   url: string;
+  pos: number | 'top' | 'bottom';
 }
 
 export enum TrelloActionType {
