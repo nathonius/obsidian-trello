@@ -20,8 +20,10 @@ import { PluginState } from './state';
 import { CardSuggestModal, BoardSuggestModal, CardCreateModal, ListSuggestModal, CustomizeUIModal } from './modal';
 import { TrelloView } from './view/view';
 import { migrations } from './migrations';
+import { MetaEditWrapper } from './meta-edit';
 
 export class TrelloPlugin extends Plugin {
+  metaEdit = new MetaEditWrapper(this);
   api!: TrelloAPI;
   state!: PluginState;
   view!: TrelloView;
@@ -31,22 +33,6 @@ export class TrelloPlugin extends Plugin {
   readonly cardSuggestModal = new CardSuggestModal(this.app);
   customizeUIModal!: CustomizeUIModal;
   readonly listSuggestModal = new ListSuggestModal(this.app);
-
-  get metaEditAvailable(): boolean {
-    const available = !!(this.app as any).plugins.plugins['metaedit'];
-    if (!available) {
-      this.log('MetaEdit not available.', LogLevel.Error);
-      new Notice(TRELLO_ERRORS.metaEdit);
-    }
-    return available;
-  }
-
-  get metaEdit(): MetaEditApi {
-    return {
-      ...(this.app as any).plugins.plugins['metaedit'].api,
-      deleteProperty: this.deleteProperty.bind(this)
-    };
-  }
 
   async onload(): Promise<void> {
     // Set up data and default data.
@@ -159,21 +145,21 @@ export class TrelloPlugin extends Plugin {
    */
   private async handleFile(file: TFile | null): Promise<void> {
     // See if we need to do anything
-    if (!file || !this.metaEditAvailable) {
+    if (!file || !this.metaEdit.available) {
       return;
     }
 
-    let id = await this.metaEdit.getPropertyValue(MetaKey.TrelloId, file);
+    let id = await this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, file);
 
     if (!id) {
-      const deprecatedId = await this.metaEdit.getPropertyValue(MetaKey.BoardCard, file);
+      const deprecatedId = await this.metaEdit.plugin.getPropertyValue(MetaKey.BoardCard, file);
       if (deprecatedId) {
         // Migrate old board/card ID to new ID
         const newId = uuid();
         const [boardId, cardId] = deprecatedId.split(';');
-        await this.metaEdit.deleteProperty(MetaKey.BoardCard, file);
+        await this.metaEdit.plugin.deleteProperty(MetaKey.BoardCard, file);
         await new Promise((resolve) => window.setTimeout(resolve, METAEDIT_DEBOUNCE));
-        await this.metaEdit.createYamlProperty(MetaKey.TrelloId, newId, file);
+        await this.metaEdit.plugin.createYamlProperty(MetaKey.TrelloId, newId, file);
         await new Promise((resolve) => window.setTimeout(resolve, METAEDIT_DEBOUNCE));
         this.state.updateConnectedCard(newId, { boardId, cardId });
         id = newId;
@@ -192,23 +178,6 @@ export class TrelloPlugin extends Plugin {
   }
 
   /**
-   * Add or update a frontmatter key to a given file
-   * Make sure not to call this multiple times in a row,
-   * updates can get clobbered.
-   */
-  private updateOrCreateMeta(key: string, value: string, file: TFile): Observable<void> {
-    return from(this.metaEdit.getPropertyValue(key, file)).pipe(
-      concatMap((existing) => {
-        if (existing) {
-          return from(this.metaEdit.update(key, value, file));
-        } else {
-          return from(this.metaEdit.createYamlProperty(key, value, file));
-        }
-      })
-    );
-  }
-
-  /**
    * Opens multiple suggest modals to select first a trello board and then a trello card
    * Adds the board and card IDs to the frontmatter of the note, then reveals the leaf
    */
@@ -218,7 +187,7 @@ export class TrelloPlugin extends Plugin {
     // Might need this later
     let board: TrelloBoard;
 
-    if (view instanceof FileView && this.metaEditAvailable) {
+    if (view instanceof FileView && this.metaEdit.available) {
       this.log('Connecting trello card');
       this.state.settings
         .pipe(
@@ -251,7 +220,7 @@ export class TrelloPlugin extends Plugin {
           concatMap((selectedCard: TrelloCard) =>
             forkJoin({
               selectedCard: of(selectedCard),
-              existingId: from(this.metaEdit.getPropertyValue(MetaKey.TrelloId, view.file))
+              existingId: from(this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, view.file))
             })
           ),
           map(({ selectedCard, existingId }: { selectedCard: TrelloCard; existingId: string | undefined }) => {
@@ -261,7 +230,7 @@ export class TrelloPlugin extends Plugin {
             this.state.connectedCardId.next(trelloId);
             return trelloId;
           }),
-          concatMap((trelloId: string) => this.updateOrCreateMeta(MetaKey.TrelloId, trelloId, view.file))
+          concatMap((trelloId: string) => this.metaEdit.updateOrCreateMeta(MetaKey.TrelloId, trelloId, view.file))
         )
         .subscribe({
           next: () => {
@@ -294,11 +263,11 @@ export class TrelloPlugin extends Plugin {
   disconnectTrelloCard(): void {
     const view = this.app.workspace.activeLeaf?.view;
 
-    if (view instanceof FileView && this.metaEditAvailable) {
-      from(this.metaEdit.getPropertyValue(MetaKey.TrelloId, view.file)).subscribe((existing) => {
+    if (view instanceof FileView && this.metaEdit.available) {
+      from(this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, view.file)).subscribe((existing) => {
         if (existing) {
           this.log('Disconnecting trello connected card.');
-          this.metaEdit.deleteProperty(MetaKey.TrelloId, view.file);
+          this.metaEdit.plugin.deleteProperty(MetaKey.TrelloId, view.file);
           this.state.connectedCardId.next(null);
         }
       });
@@ -377,24 +346,6 @@ export class TrelloPlugin extends Plugin {
     } else if (activate) {
       this.log('-> Trello leaf found, revealing.');
       this.app.workspace.revealLeaf(leaves[0]);
-    }
-  }
-
-  // From https://github.com/chhoumann/MetaEdit/blob/master/src/metaController.ts
-  private async deleteProperty(property: string, file: TFile): Promise<void> {
-    if (file) {
-      const fileContent = await this.app.vault.read(file);
-      const splitContent = fileContent.split('\n');
-      const regexp = new RegExp(`^${property}:`);
-
-      const idx = splitContent.findIndex((s) => s.match(regexp));
-      const newFileContent = splitContent
-        .filter((_, i) => {
-          if (i != idx) return true;
-        })
-        .join('\n');
-
-      await this.app.vault.modify(file, newFileContent);
     }
   }
 }
