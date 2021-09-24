@@ -1,3 +1,9 @@
+# v1.3.1
+
+## Fixes
+
+- UUIDs can be generated on mobile.
+
 # v1.3.0
 
 ## Features
