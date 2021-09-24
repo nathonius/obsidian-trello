@@ -1,7 +1,7 @@
 import { FileView, Notice, Plugin, addIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import { concat, forkJoin, from, iif, Observable, of, Subject } from 'rxjs';
 import { take, map, concatMap, tap, takeUntil, delay } from 'rxjs/operators';
-import { v4 as uuid } from 'uuid';
+import { nanoid } from 'nanoid';
 import {
   CUSTOM_ICONS,
   DEFAULT_DATA,
@@ -154,7 +154,7 @@ export class TrelloPlugin extends Plugin {
 
     if (boardCardId && !trelloId) {
       // Migrate to add new ID
-      const newId = uuid();
+      const newId = nanoid();
       const [boardId, cardId] = boardCardId.split(';');
       await this.metaEdit.plugin.createYamlProperty(MetaKey.TrelloId, newId, file);
       await new Promise((resolve) => window.setTimeout(resolve, METAEDIT_DEBOUNCE));
@@ -234,7 +234,7 @@ export class TrelloPlugin extends Plugin {
             })
           ),
           map(({ selectedCard, existingId }: { selectedCard: TrelloCard; existingId: string | undefined }) => {
-            const trelloId = existingId ? existingId : uuid();
+            const trelloId = existingId ? existingId : nanoid();
             this.log('TrelloPlugin.connectTrelloCard', `-> Updating file with plugin ID ${trelloId}`);
             this.state.updateConnectedCard(trelloId, { cardId: selectedCard.id, boardId: selectedCard.idBoard });
             this.state.connectedCardId.next(trelloId);
