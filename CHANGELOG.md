@@ -1,3 +1,9 @@
+# v1.3.2
+
+## Fixes
+
+- Version 1.3.1 was incorrectly released with the wrong source files. 1.3.2 has no changes except to the version.
+
 # v1.3.1
 
 ## Fixes
