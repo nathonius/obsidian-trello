@@ -32,6 +32,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   token: '',
   customUi: {
     global: {
+      checklist: true,
       comments: true,
       description: true,
       labels: true,
@@ -48,7 +49,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
 export const DEFAULT_DATA: PluginData = {
   settings: DEFAULT_SETTINGS,
-  version: '1.3.2',
+  version: '1.4.0',
   firstRun: true,
   connectedCards: {}
 };

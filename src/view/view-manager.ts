@@ -1,7 +1,7 @@
 import { BehaviorSubject, forkJoin, Observable, combineLatest, of } from 'rxjs';
 import { concatMap, filter, finalize, switchMap, take, takeUntil, tap, map, mergeMap } from 'rxjs/operators';
 import { TrelloPlugin } from '../plugin';
-import { PluginError, PluginUISettings, TrelloAction, TrelloCard, TrelloList } from '../interfaces';
+import { PluginError, PluginUISettings, TrelloAction, TrelloCard, TrelloChecklist, TrelloList } from '../interfaces';
 import { GLOBAL_UI } from 'src/constants';
 
 /**
@@ -11,17 +11,20 @@ export class TrelloViewManager {
   // Cache bust
   private bypassActionCache = false;
   private bypassListCache = false;
+  private bypassChecklistsCache = false;
 
   // Error handling
   cardError: PluginError | null = null;
   actionsError: PluginError | null = null;
   listError: PluginError | null = null;
+  checklistsError: PluginError | null = null;
 
   // Data
   readonly connectedId = new BehaviorSubject<string | null>(null);
   readonly currentCard = new BehaviorSubject<TrelloCard | null>(null);
   readonly currentActions = new BehaviorSubject<TrelloAction[] | null>(null);
   readonly currentList = new BehaviorSubject<TrelloList | null>(null);
+  readonly currentChecklists = new BehaviorSubject<TrelloChecklist[] | null>(null);
   readonly currentUIConfig = new BehaviorSubject<PluginUISettings | null>(null);
 
   constructor(
@@ -136,6 +139,30 @@ export class TrelloViewManager {
         error: (err: PluginError) => {
           this.listError = err;
           this.currentList.next(null);
+        }
+      });
+
+    // Update checklists
+    this.currentCard
+      .pipe(
+        takeUntil(this.destroy),
+        filter((card) => card !== null && card.idChecklists !== null && card.idChecklists.length > 0),
+        switchMap((card) =>
+          this.plugin.api.getChecklistsFromCard(card!.id, card!.idChecklists, this.bypassChecklistsCache)
+        ),
+        finalize(() => {
+          this.bypassChecklistsCache = false;
+        })
+      )
+      .subscribe({
+        next: (checklists) => {
+          this.plugin.log('TrelloViewManager', 'Checklist updated.');
+          this.checklistsError = null;
+          this.currentChecklists.next(checklists);
+        },
+        error: (err: PluginError) => {
+          this.checklistsError = err;
+          this.currentChecklists.next(null);
         }
       });
 

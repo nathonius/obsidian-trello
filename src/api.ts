@@ -10,6 +10,9 @@ import {
   TrelloActionType,
   TrelloBoard,
   TrelloCard,
+  TrelloCheckItem,
+  TrelloCheckItemState,
+  TrelloChecklist,
   TrelloLabel,
   TrelloList
 } from './interfaces';
@@ -246,6 +249,79 @@ export class TrelloAPI {
   }
 
   /**
+   * Get all checklists from a card by card ID.
+   * Does not use cache
+   */
+  getChecklistsFromCard(
+    cardId: string,
+    checklistIds: string[] = [],
+    bypassCache = false,
+    cacheExpireMs = 60000 // 1 minute
+  ): Observable<TrelloChecklist[]> {
+    this.plugin.log('TrelloAPI.getChecklistsFromCard', '');
+    const cached = checklistIds.map((id) => this.plugin.state.checklistCache[id]);
+    const cacheDate = new Date().getTime();
+    if (
+      !cached ||
+      bypassCache ||
+      cached.some((checklist) => checklist === undefined || cacheDate - checklist.timestamp.getTime() > cacheExpireMs)
+    ) {
+      return this._getChecklistsFromCard(cardId);
+    }
+    this.plugin.log('TrelloAPI.getChecklistsFromCard', '-> Returning cached value.');
+    return of(cached.map((c) => c.item));
+  }
+
+  /**
+   * Get all checklists from a card by card ID.
+   * Always calls the API and updates the cache.
+   */
+  private _getChecklistsFromCard(cardId: string): Observable<TrelloChecklist[]> {
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
+    const url = this.auth(`${TRELLO_API}/1/cards/${cardId}/checklists`);
+    return ajax<TrelloChecklist[]>({ url, crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err)),
+      map((resp) => resp.response),
+      tap((checklists) => {
+        if (checklists && checklists.length > 0) {
+          const cacheDate = new Date();
+          checklists.forEach((c) => {
+            this.plugin.state.checklistCache[c.id] = { item: c, timestamp: cacheDate };
+          });
+        }
+      })
+    );
+  }
+
+  getChecklist(checklistId: string, bypassCache = false, cacheExpireMs = 60000): Observable<TrelloChecklist> {
+    this.plugin.log('TrelloAPI.getChecklist', '');
+    const cached = this.plugin.state.checklistCache[checklistId];
+    if (!cached || bypassCache || new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs) {
+      return this._getChecklist(checklistId);
+    }
+    this.plugin.log('TrelloAPI.getChecklist', '-> Returning cached value.');
+    return of(cached.item);
+  }
+
+  private _getChecklist(checklistId: string): Observable<TrelloChecklist> {
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
+    const url = this.auth(`${TRELLO_API}/1/checklists/${checklistId}`);
+    return ajax<TrelloChecklist>({ url, crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err)),
+      map((resp) => resp.response),
+      tap((checklists) => {
+        if (checklists) {
+          this.plugin.state.checklistCache[checklistId] = { item: checklists, timestamp: new Date() };
+        }
+      })
+    );
+  }
+
+  /**
    * Add a new comment to a card.
    */
   addCommentToCard(cardId: string, content: string): Observable<AjaxResponse<TrelloAction>> {
@@ -288,7 +364,15 @@ export class TrelloAPI {
   }
 
   /**
-   * General update method. Should only be used internally.
+   * Check/uncheck a checkItem
+   */
+  updateCheckItemState(cardId: string, checkItemId: string, state: TrelloCheckItemState): Observable<TrelloCheckItem> {
+    this.plugin.log('TrelloAPI.updateCheckItemState', '');
+    return this.updateCheckItem(cardId, { id: checkItemId, state });
+  }
+
+  /**
+   * General card update method. Should only be used internally.
    * All updates should be proxied through individual methods.
    */
   private updateCard(updatedCard: Partial<TrelloCard> & { id: string }): Observable<TrelloCard> {
@@ -312,6 +396,30 @@ export class TrelloAPI {
     }
 
     return ajax<TrelloCard>({ url, method: 'PUT', crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err)),
+      map((resp) => resp.response)
+    );
+  }
+
+  /**
+   * General checkItem update method. Should only be used internally.
+   * All updates should be proxied through individual methods.
+   */
+  private updateCheckItem(
+    cardId: string,
+    updatedCheckItem: Partial<TrelloCheckItem> & { id: string }
+  ): Observable<TrelloCheckItem> {
+    this.plugin.log('TrelloAPI.updateCheckItem', '');
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
+    let url = this.auth(`${TRELLO_API}/1/cards/${cardId}/checkItem/${updatedCheckItem.id}`);
+    // Add parameters. Only some properties can be updated here.
+    url = this.addQueryParam(url, 'name', updatedCheckItem.name, true);
+    url = this.addQueryParam(url, 'state', updatedCheckItem.state, true);
+    url = this.addQueryParam(url, 'idChecklist', updatedCheckItem.idChecklist);
+
+    return ajax<TrelloCheckItem>({ url, method: 'PUT', crossDomain: true }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response)
     );

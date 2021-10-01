@@ -7,6 +7,7 @@ import {
   PluginUISettings,
   TrelloAction,
   TrelloCard,
+  TrelloChecklist,
   TrelloItemCache,
   TrelloLabel,
   TrelloList
@@ -19,6 +20,7 @@ export class PluginState {
   readonly cardActionsCache: TrelloItemCache<TrelloAction[]> = {};
   readonly listCache: TrelloItemCache<TrelloList> = {};
   readonly labelCache: TrelloItemCache<TrelloLabel[]> = {};
+  readonly checklistCache: TrelloItemCache<TrelloChecklist> = {};
   readonly boardCardId = new BehaviorSubject<string | null>(null);
   readonly connectedCardId = new BehaviorSubject<string | null>(null);
   readonly currentToken = new BehaviorSubject<string>('');
