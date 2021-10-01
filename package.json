@@ -1,6 +1,6 @@
 {
   "name": "obsidian-trello",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "description": "Connect an existing or new Trello card to an Obsidian note. Once connected, see basic info, and add and view comments.",
   "repository": {
     "type": "git",

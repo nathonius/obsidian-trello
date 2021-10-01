@@ -53,7 +53,7 @@ export class TrelloPlugin extends Plugin {
 
     // Execute version migrations
     if (savedData && savedData.version !== DEFAULT_DATA.version) {
-      migrations[savedData.version](this);
+      migrations[savedData.version](this, data);
     }
 
     // Need some settings synchronously

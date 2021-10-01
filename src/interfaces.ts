@@ -9,6 +9,7 @@ export interface PluginData {
 }
 
 export interface PluginUISettings {
+  checklist: boolean;
   comments: boolean;
   description: boolean;
   labels: boolean;
@@ -166,4 +167,24 @@ export interface NewCardRequest {
   pos?: CardPosition;
   idList: string;
   idLabels?: string[];
+}
+
+export interface TrelloCheckItem {
+  idChecklist: string;
+  state: TrelloCheckItemState;
+  id: string;
+  name: string;
+  nameData: null | any; // unknown
+  pos: number;
+  due: null | string; // Date
+  // "idMember": null
+}
+
+export interface TrelloChecklist {
+  id: string;
+  name: string;
+  idCard: string;
+  pos: number;
+  idBoard: string;
+  checkItems: TrelloCheckItem[];
 }

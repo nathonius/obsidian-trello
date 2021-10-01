@@ -2,9 +2,19 @@ import { ItemView, Notice, setIcon, WorkspaceLeaf } from 'obsidian';
 import { combineLatest, Subject } from 'rxjs';
 import { takeUntil, tap } from 'rxjs/operators';
 import { CUSTOM_ICONS, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from '../constants';
-import { PluginError, PluginUISettings, TrelloAction, TrelloCard, TrelloList } from '../interfaces';
+import {
+  PluginError,
+  PluginUISettings,
+  TrelloAction,
+  TrelloCard,
+  TrelloCheckItem,
+  TrelloCheckItemState,
+  TrelloChecklist,
+  TrelloList
+} from '../interfaces';
 import { TrelloPlugin } from '../plugin';
 import { TrelloViewManager } from './view-manager';
+import { Accordion, AccordionSection } from '../accordion/accordion';
 
 export class TrelloView extends ItemView {
   private readonly destroy = new Subject<void>();
@@ -19,10 +29,11 @@ export class TrelloView extends ItemView {
       this.viewManager.currentCard,
       this.viewManager.currentActions,
       this.viewManager.currentList,
+      this.viewManager.currentChecklists,
       this.viewManager.currentUIConfig
     ])
       .pipe(takeUntil(this.destroy))
-      .subscribe(([card, actions, list, uiConfig]) => {
+      .subscribe(([card, actions, list, checklists, uiConfig]) => {
         this.contentEl.empty();
         const errors = [this.viewManager.cardError, this.viewManager.actionsError, this.viewManager.listError];
         if (errors.some((err) => err !== null)) {
@@ -30,7 +41,7 @@ export class TrelloView extends ItemView {
         } else if (card === null) {
           this.renderEmptyView(null);
         } else {
-          this.renderConnectedView(card, actions, list, uiConfig);
+          this.renderConnectedView(card, actions, list, checklists, uiConfig);
         }
       });
   }
@@ -115,30 +126,42 @@ export class TrelloView extends ItemView {
     card: TrelloCard,
     actions: TrelloAction[] | null,
     list: TrelloList | null,
+    checklists: TrelloChecklist[] | null,
     uiConfig: PluginUISettings | null
   ): void {
     this.plugin.log('TrelloView.renderConnectedView', '');
     this.renderHeader(this.contentEl);
     const pane = this.renderPaneContainer();
+
     if (uiConfig?.list || uiConfig?.title || uiConfig?.description) {
       const cardInfo = pane.createDiv('trello-pane--card-info');
+
       if (uiConfig?.list && list) {
         this.renderCardList(list, cardInfo);
       }
+
       if (uiConfig.title) {
         this.renderCardTitle(card, cardInfo);
       }
+
       if (uiConfig.description && card.desc) {
         this.renderCardDesc(card, cardInfo);
       }
     }
+
     if (uiConfig?.labels && card.labels && card.labels.length > 0) {
       const labelSectionContainer = pane.createDiv('trello-pane--label-section');
       this.renderLabels(card, labelSectionContainer);
     }
+
     if (uiConfig?.comments) {
       const commentSectionContainer = pane.createDiv('trello-pane--comment-section');
       this.renderCommentSection(card, actions, commentSectionContainer);
+    }
+
+    if (uiConfig?.checklist && checklists && checklists.length > 0) {
+      const checklistSectionContainer = pane.createDiv('trello-pane--checklist-section');
+      this.renderChecklistSection(card.id, checklists, checklistSectionContainer);
     }
   }
 
@@ -301,9 +324,76 @@ export class TrelloView extends ItemView {
   }
 
   /**
+   * Render the checklist section
+   */
+  private renderChecklistSection(cardId: string, checklists: TrelloChecklist[], parent: HTMLElement): void {
+    const checklistSection = parent.createDiv('trello-checklist--section');
+    const accordion = new Accordion(checklistSection);
+    checklists.forEach((checklist) => {
+      this.renderChecklist(cardId, checklist, accordion);
+    });
+  }
+
+  /**
+   * Render an individual checklist
+   */
+  private renderChecklist(cardId: string, checklist: TrelloChecklist, accordion: Accordion): void {
+    // Create accordion section
+    const section = accordion.addSection(checklist.name);
+
+    // Add progress to accordion title
+    const titleText = section.titleEl.querySelector('.trello-accordion--title-text') as HTMLElement;
+    const titlePercent = titleText?.createSpan({ cls: 'trello-checklist--accordion-percent' });
+
+    // Create progress bar
+    const progressContainer = section.contentEl.createDiv('trello-checklist--progress-container');
+    const progressPercent = progressContainer.createSpan('trello-checklist--progress-percent');
+    const progress = progressContainer.createEl('progress', {
+      cls: 'trello-checklist--progress',
+      attr: {
+        max: 100
+      }
+    });
+
+    // Set progress values
+    this.updateProgress(checklist.checkItems, progress, progressPercent, titlePercent);
+
+    // Create list
+    const checklistContainer = section.contentEl.createEl('ul', 'trello-checklist--checklist');
+    checklist.checkItems.forEach((i, index) => {
+      const itemId = `checkitem-${i.id}`;
+      const item = checklistContainer.createEl('li', 'trello-checklist--checkitem');
+
+      // Add checkbox and label
+      const checkbox = item.createEl('input', {
+        cls: 'trello-checklist--checkitem-input',
+        attr: { type: 'checkbox', id: itemId }
+      });
+      checkbox.checked = i.state === TrelloCheckItemState.Complete;
+      checkbox.addEventListener('change', (event) => {
+        event.preventDefault();
+        let state: TrelloCheckItemState = TrelloCheckItemState.Complete;
+        if (!checkbox.checked) {
+          state = TrelloCheckItemState.Incomplete;
+        }
+        this.plugin.api.updateCheckItemState(cardId, i.id, state).subscribe((result) => {
+          // Update checkbox and progress
+          checkbox.checked = result.state === TrelloCheckItemState.Complete;
+          const newCheckItems = [...checklist.checkItems];
+          newCheckItems[index].state = result.state;
+          this.updateProgress(newCheckItems, progress, progressPercent, titlePercent);
+          // Just remove the list from the cache, no need to re-render
+          delete this.plugin.state.listCache[checklist.id];
+        });
+      });
+      item.createEl('label', { cls: 'trello-checklist--checkitem-label', text: i.name, attr: { for: itemId } });
+    });
+  }
+
+  /**
    * Render a specific header button.
    */
-  private renderNavButton(parent: HTMLElement, label: string, icon: string, callback: () => void) {
+  private renderNavButton(parent: HTMLElement, label: string, icon: string, callback: () => void): void {
     const button = parent.createDiv({
       cls: 'nav-action-button',
       attr: { 'aria-label': label }
@@ -338,5 +428,24 @@ export class TrelloView extends ItemView {
       }
     });
     return worstError;
+  }
+
+  /**
+   * Given an array of checkItems, set the progress values on
+   * - a given progress element
+   * - a span (as a %)
+   * - an element (as a fraction)
+   */
+  private updateProgress(
+    checkItems: TrelloCheckItem[],
+    progress: HTMLProgressElement,
+    percent: HTMLSpanElement,
+    titlePercent: HTMLElement
+  ): void {
+    const completeItems = checkItems.filter((i) => i.state === TrelloCheckItemState.Complete);
+    const progressPercent = checkItems.length > 0 ? Math.round((completeItems.length / checkItems.length) * 100) : 0;
+    progress.value = progressPercent;
+    percent.innerText = `${progressPercent}%`;
+    titlePercent.innerText = `(${completeItems.length}/${checkItems.length})`;
   }
 }

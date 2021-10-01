@@ -149,3 +149,40 @@
     word-break: break-word;
   }
 }
+
+.trello-checklist {
+  $checkbox-column-width: 32px;
+  &--checklist {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  &--accordion-percent {
+    color: var(--text-muted);
+    margin-left: 4px;
+  }
+  &--progress-container {
+    display: flex;
+    align-items: center;
+  }
+  &--progress-percent {
+    display: inline-block;
+    width: $checkbox-column-width;
+    color: var(--text-muted);
+    font-size: 11px;
+    text-align: center;
+  }
+  &--progress {
+    flex-grow: 1;
+  }
+  &--checkitem-input {
+    width: $checkbox-column-width;
+    margin: 0;
+  }
+  &--section {
+    /* Override accordion styles */
+    .trello-accordion--title:hover {
+      background-color: var(--background-secondary-alt);
+    }
+  }
+}
