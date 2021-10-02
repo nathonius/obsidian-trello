@@ -180,9 +180,6 @@
     margin: 0;
   }
   &--section {
-    /* Override accordion styles */
-    .trello-accordion--title:hover {
-      background-color: var(--background-secondary-alt);
-    }
+    margin-top: 8px;
   }
 }
