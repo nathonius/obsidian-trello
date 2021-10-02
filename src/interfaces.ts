@@ -9,7 +9,7 @@ export interface PluginData {
 }
 
 export interface PluginUISettings {
-  checklist: boolean;
+  checklists: boolean;
   comments: boolean;
   description: boolean;
   labels: boolean;

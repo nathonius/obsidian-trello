@@ -14,7 +14,7 @@ import {
 } from '../interfaces';
 import { TrelloPlugin } from '../plugin';
 import { TrelloViewManager } from './view-manager';
-import { Accordion, AccordionSection } from '../accordion/accordion';
+import { Accordion } from '../accordion/accordion';
 
 export class TrelloView extends ItemView {
   private readonly destroy = new Subject<void>();
@@ -159,7 +159,7 @@ export class TrelloView extends ItemView {
       this.renderCommentSection(card, actions, commentSectionContainer);
     }
 
-    if (uiConfig?.checklist && checklists && checklists.length > 0) {
+    if (uiConfig?.checklists && checklists && checklists.length > 0) {
       const checklistSectionContainer = pane.createDiv('trello-pane--checklist-section');
       this.renderChecklistSection(card.id, checklists, checklistSectionContainer);
     }
@@ -169,6 +169,7 @@ export class TrelloView extends ItemView {
    * Renders the controls above the card info.
    */
   private renderHeader(parent: HTMLElement): void {
+    this.plugin.log('TrelloView.renderHeader', '');
     const header = parent.createDiv('nav-header');
     const buttons = header.createDiv('nav-buttons-container');
     this.renderNavButton(buttons, 'Refresh card', 'reset', () => {
@@ -190,6 +191,7 @@ export class TrelloView extends ItemView {
    * Renders the name of the list which can be used to move the card to another list
    */
   private renderCardList(list: TrelloList, parent: HTMLElement): void {
+    this.plugin.log('TrelloView.renderCardList', '');
     const listName = parent.createEl('a', {
       cls: 'trello-pane--card-info--list',
       text: list.name,
@@ -209,6 +211,7 @@ export class TrelloView extends ItemView {
    * Renders the name of the card
    */
   private renderCardTitle(card: TrelloCard, parent: HTMLElement): void {
+    this.plugin.log('TrelloView.renderCardTitle', '');
     const cardName = parent.createEl('h3', { text: card.name });
     const cardLink = cardName.createEl('a', {
       attr: { href: card.url, 'aria-label': 'View on Trello' }
@@ -220,6 +223,7 @@ export class TrelloView extends ItemView {
    * Renders the card description.
    */
   private renderCardDesc(card: TrelloCard, parent: HTMLElement): void {
+    this.plugin.log('TrelloView.renderCardDesc', '');
     const descContainer = parent.createDiv('trello-card-desc--container');
     const collapseButton = descContainer.createEl('a', {
       text: 'Description',
@@ -244,6 +248,7 @@ export class TrelloView extends ItemView {
    * Render the colored labels.
    */
   private renderLabels(card: TrelloCard, parent: HTMLElement): void {
+    this.plugin.log('TrelloView.renderLabels', '');
     card.labels.forEach((label) => {
       if (label.color) {
         const wrapper = parent.createDiv({
@@ -261,6 +266,7 @@ export class TrelloView extends ItemView {
    * Renders the comment section and input to add new comments.
    */
   private renderCommentSection(card: TrelloCard, comments: TrelloAction[] | null, parent: HTMLElement): void {
+    this.plugin.log('TrelloView.renderCommentSection', '');
     const container = parent.createDiv('trello-comment-input--container');
 
     // Small hack for auto-resizing textarea
@@ -306,6 +312,7 @@ export class TrelloView extends ItemView {
    * Render an individual comment.
    */
   private renderComment(comment: TrelloAction, parent: HTMLElement): void {
+    this.plugin.log('TrelloView.renderComment', '');
     const commentContainer = parent.createDiv('trello-comment--container');
     const commentMetadata = commentContainer.createDiv('trello-comment--metadata');
     commentMetadata.createSpan({
@@ -327,6 +334,7 @@ export class TrelloView extends ItemView {
    * Render the checklist section
    */
   private renderChecklistSection(cardId: string, checklists: TrelloChecklist[], parent: HTMLElement): void {
+    this.plugin.log('TrelloView.renderChecklistSection', '');
     const checklistSection = parent.createDiv('trello-checklist--section');
     const accordion = new Accordion(checklistSection);
     checklists.forEach((checklist) => {
@@ -338,6 +346,7 @@ export class TrelloView extends ItemView {
    * Render an individual checklist
    */
   private renderChecklist(cardId: string, checklist: TrelloChecklist, accordion: Accordion): void {
+    this.plugin.log('TrelloView.renderChecklist', '');
     // Create accordion section
     const section = accordion.addSection(checklist.name);
 
@@ -394,6 +403,7 @@ export class TrelloView extends ItemView {
    * Render a specific header button.
    */
   private renderNavButton(parent: HTMLElement, label: string, icon: string, callback: () => void): void {
+    this.plugin.log('TrelloView.renderNavButton', '');
     const button = parent.createDiv({
       cls: 'nav-action-button',
       attr: { 'aria-label': label }
@@ -411,6 +421,7 @@ export class TrelloView extends ItemView {
    * 4. No token
    */
   private getWorstError(errors: Array<PluginError | null>): PluginError | null {
+    this.plugin.log('TrelloView.getWorstError', '');
     let worstError: PluginError | null = null;
     errors.forEach((err) => {
       switch (worstError) {
@@ -442,6 +453,7 @@ export class TrelloView extends ItemView {
     percent: HTMLSpanElement,
     titlePercent: HTMLElement
   ): void {
+    this.plugin.log('TrelloView.updateProgress', '');
     const completeItems = checkItems.filter((i) => i.state === TrelloCheckItemState.Complete);
     const progressPercent = checkItems.length > 0 ? Math.round((completeItems.length / checkItems.length) * 100) : 0;
     progress.value = progressPercent;
