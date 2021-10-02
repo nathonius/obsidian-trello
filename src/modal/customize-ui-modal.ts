@@ -53,6 +53,9 @@ export class CustomizeUIModal extends Modal {
         new Setting(this.contentEl).setName('Labels').addToggle((toggle) => {
           toggle.setValue(settings.labels).onChange((value) => (this.newState.labels = value));
         });
+        new Setting(this.contentEl).setName('Checklists').addToggle((toggle) => {
+          toggle.setValue(settings.checklists).onChange((value) => (this.newState.checklists = value));
+        });
         const controls = this.contentEl.createDiv();
         if (source !== GLOBAL_UI) {
           const resetButton = controls.createEl('button', { text: 'Reset to Default' });

@@ -32,7 +32,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   token: '',
   customUi: {
     global: {
-      checklist: true,
+      checklists: true,
       comments: true,
       description: true,
       labels: true,
