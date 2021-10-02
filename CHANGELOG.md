@@ -1,3 +1,13 @@
+# v1.4.0
+
+## Features
+
+- Add checklist support. These can be enabled/disabled globally or per note.
+
+## Fixes
+
+- Force a card refresh when the token is updated. This won't fix all issues with broken tokens but does address this one case.
+
 # v1.3.2
 
 ## Fixes
