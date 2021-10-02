@@ -19,7 +19,7 @@ import { TrelloSettings } from './settings';
 import { PluginState } from './state';
 import { CardSuggestModal, BoardSuggestModal, CardCreateModal, ListSuggestModal, CustomizeUIModal } from './modal';
 import { TrelloView } from './view/view';
-import { migrations } from './migrations';
+import { migrate } from './migrations';
 import { MetaEditWrapper } from './meta-edit';
 
 export class TrelloPlugin extends Plugin {
@@ -51,9 +51,9 @@ export class TrelloPlugin extends Plugin {
     // Add custom icon(s)
     addIcon(CUSTOM_ICONS.trello.id, CUSTOM_ICONS.trello.svgContent);
 
-    // Execute version migrations
+    // Execute version migration
     if (savedData && savedData.version !== DEFAULT_DATA.version) {
-      migrations[savedData.version](this, data);
+      migrate(this, data);
     }
 
     // Need some settings synchronously
