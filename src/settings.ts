@@ -43,6 +43,7 @@ export class TrelloSettings extends PluginSettingTab {
           .setValue(settings.token)
           .onChange((value: string) => {
             this.plugin.state.updateSetting('token', value.trim());
+            this.plugin.view.updateCard();
           });
       });
   }
