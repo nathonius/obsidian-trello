@@ -4,7 +4,7 @@
 
 ## Overview
 
-Connect a single Trello card to an Obsidian note. Once connected, see basic info, and add and view comments. No card to connect to the note? Add a new note to a list from inside Obsidian. When you finish a task, move the card to a different list.
+Connect a single Trello card to an Obsidian note. Once connected, see basic info, and add and view comments. Check items off of checklists. No card to connect to the note? Add a new note to a list from inside Obsidian. When you finish a task, move the card to a different list.
 
 The connection is through a YAML frontmatter key.
 
@@ -23,7 +23,11 @@ Before you can connect a Trello card, you need to create an API token and set it
 
 Tokens can be revoked at any time in your Trello account settings.
 
-### Optional Settings
+### Settings
+
+**Trello Token** - See the prerequisites above. This is required.
+
+**Customize UI** - Adjust which parts of a card are displayed. This setting can be updated globally, which applies to all cards, and overridden on an individual note.
 
 **Select Boards** - Filter the boards available to select cards from. If none are selected, all boards will be available.
 
@@ -33,7 +37,7 @@ Tokens can be revoked at any time in your Trello account settings.
 
 **Moved Card Position** - When moving a card from one list to another, should it be moved to the top or bottom of the selected list.
 
-**Verbose Logging** - Enable this if you're having trouble with the plugin. Logs will be enabled in the console.
+**Verbose Logging** - Enable this if you're having trouble with the plugin. Logs will be enabled in the console. These can help me diagnose issues.
 
 ## Commands
 
