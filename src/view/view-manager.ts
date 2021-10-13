@@ -150,6 +150,16 @@ export class TrelloViewManager {
         switchMap((card) =>
           this.plugin.api.getChecklistsFromCard(card!.id, card!.idChecklists, this.bypassChecklistsCache)
         ),
+        map((checklists) => {
+          // Sort checklists
+          checklists.sort((a, b) => (a.pos < b.pos ? -1 : 1));
+
+          // Sort each checklist item
+          checklists.forEach((list) => {
+            list.checkItems.sort((a, b) => (a.pos < b.pos ? -1 : 1));
+          });
+          return checklists;
+        }),
         finalize(() => {
           this.bypassChecklistsCache = false;
         })
