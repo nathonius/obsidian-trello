@@ -175,6 +175,7 @@ export class TrelloViewManager {
           this.plugin.log('TrelloViewManager', 'Refreshing data.');
           this.bypassActionCache = true;
           this.bypassListCache = true;
+          this.bypassChecklistsCache = true;
         }),
         switchMap(() => {
           const card = this.currentCard.value!;
