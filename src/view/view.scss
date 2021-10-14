@@ -164,6 +164,24 @@
   &--progress-container {
     display: flex;
     align-items: center;
+    progress[value] {
+      flex-grow: 1;
+      /* Reset */
+      -webkit-appearance: none;
+      appearance: none;
+      border: none;
+      height: 8px;
+    }
+    progress[value]::-webkit-progress-bar {
+      background-color: var(--text-normal);
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+    }
+    progress[value]::-webkit-progress-value {
+      background-color: var(--text-accent);
+      height: 8px;
+    }
   }
   &--progress-percent {
     display: inline-block;
@@ -172,12 +190,12 @@
     font-size: 11px;
     text-align: center;
   }
-  &--progress {
-    flex-grow: 1;
-  }
   &--checkitem-input {
     width: $checkbox-column-width;
     margin: 0;
+  }
+  &--checkitem-label {
+    font-size: 14px;
   }
   &--section {
     margin-top: 8px;
