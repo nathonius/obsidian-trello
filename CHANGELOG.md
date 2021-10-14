@@ -1,3 +1,14 @@
+# v1.5.0
+
+## Features
+
+- Theme checklist progress bar to match color theme.
+
+## Fixes
+
+- Checklists and checklist items are sorted.
+- Refreshing card bypasses checklist cache.
+
 # v1.4.0
 
 ## Features
