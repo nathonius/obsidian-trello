@@ -1,3 +1,9 @@
+# v1.5.1
+
+## Fixes
+
+- Plugin can be enabled on mobile.
+
 # v1.5.0
 
 ## Features
