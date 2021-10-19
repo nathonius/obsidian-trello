@@ -1,6 +1,6 @@
 {
   "name": "obsidian-trello",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Connect an existing or new Trello card to an Obsidian note. Once connected, see basic info, add and view comments, and check off checklist items.",
   "repository": {
     "type": "git",
@@ -21,6 +21,7 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^18.0.0",
     "@rollup/plugin-node-resolve": "^11.2.1",
+    "@rollup/plugin-replace": "^3.0.0",
     "@rollup/plugin-typescript": "^8.2.1",
     "@types/node": "^14.14.37",
     "@typescript-eslint/eslint-plugin": "^4.31.0",

@@ -49,7 +49,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
 export const DEFAULT_DATA: PluginData = {
   settings: DEFAULT_SETTINGS,
-  version: '1.5.0',
+  version: '1.5.1',
   firstRun: true,
   connectedCards: {}
 };
