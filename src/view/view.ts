@@ -1,4 +1,4 @@
-import { ItemView, Notice, setIcon, WorkspaceLeaf } from 'obsidian';
+import { ItemView, MarkdownRenderer, Notice, setIcon, WorkspaceLeaf } from 'obsidian';
 import { combineLatest, Subject } from 'rxjs';
 import { takeUntil, tap } from 'rxjs/operators';
 import { CUSTOM_ICONS, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from '../constants';
@@ -232,7 +232,8 @@ export class TrelloView extends ItemView {
     });
     const collapseIcon = collapseButton.createSpan('trello-card-desc--collapse-icon');
     setIcon(collapseIcon, 'down-chevron-glyph');
-    const description = descContainer.createDiv({ text: card.desc, cls: 'trello-card-desc--desc' });
+    const description = descContainer.createDiv({ cls: 'trello-card-desc--desc' });
+    MarkdownRenderer.renderMarkdown(card.desc, description, '', this);
     collapseButton.addEventListener('click', () => {
       if (description.style.maxHeight) {
         description.style.maxHeight = '';
@@ -324,10 +325,7 @@ export class TrelloView extends ItemView {
       cls: 'trello-comment--date'
     });
     const textContainer = commentContainer.createDiv('trello-comment--text-container');
-    textContainer.createEl('p', {
-      text: comment.data.text,
-      cls: 'trello-comment--text'
-    });
+    MarkdownRenderer.renderMarkdown(comment.data.text, textContainer, '', this);
   }
 
   /**
