@@ -1,3 +1,5 @@
+@use './markdown-styles.scss' as md;
+
 .workspace-leaf-content[data-type='trello-plugin'] {
   .view-content {
     padding: 0;
@@ -74,6 +76,7 @@
     max-height: 0px;
     overflow: hidden;
     transition: max-height 0.2s ease-out;
+    @include md.markdown;
   }
 }
 
@@ -138,10 +141,12 @@
     color: var(--text-muted);
   }
   &--text-container {
-    padding: 8px;
+    padding: 8px 8px 4px 8px;
     background-color: var(--background-primary);
     border-radius: 3px;
     box-shadow: 0 3px 5px var(--background-modifier-box-shadow);
+    font-size: 0.875em;
+    @include md.markdown;
   }
   &--text {
     margin: 0;

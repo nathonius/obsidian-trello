@@ -1,0 +1,19 @@
+/*
+A sensible set of styles to override the default
+for markdown rendered in the trello pane
+*/
+
+@mixin markdown {
+  p,
+  ul,
+  ol {
+    margin: 0 0 6px;
+  }
+  ul,
+  ol {
+    padding-left: 1.6em;
+  }
+  blockquote {
+    margin: 0 0 6px 1.6em;
+  }
+}
