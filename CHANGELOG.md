@@ -1,3 +1,9 @@
+# v1.6.0
+
+## Features
+
+- Markdown is rendered in comments, lists, and descriptions.
+
 # v1.5.1
 
 ## Fixes
