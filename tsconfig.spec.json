@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "spec/build",
+    "module": "CommonJS"
+  },
+  "include": ["**/*.spec.ts"],
+  "exclude": []
+}

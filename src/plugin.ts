@@ -43,7 +43,14 @@ export class TrelloPlugin extends Plugin {
     this.state = new PluginState(this, data);
 
     // Create new API instance
-    this.api = new TrelloAPI(this);
+    this.api = new TrelloAPI(
+      this.state.settings.pipe(
+        takeUntil(this.destroy),
+        map((settings) => settings.token)
+      ),
+      this.state,
+      this.log.bind(this)
+    );
 
     // Configure custom UI modal
     this.customizeUIModal = new CustomizeUIModal(this.app, this);

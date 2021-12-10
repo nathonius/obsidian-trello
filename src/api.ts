@@ -1,6 +1,6 @@
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
-import { ajax, AjaxError, AjaxResponse } from 'rxjs/ajax';
-import { map, takeUntil, tap, catchError } from 'rxjs/operators';
+import { ajax as RxJSAjax, AjaxConfig, AjaxError, AjaxResponse } from 'rxjs/ajax';
+import { map, tap, catchError } from 'rxjs/operators';
 import { TRELLO_API, TRELLO_API_KEY } from './constants';
 import {
   CardPosition,
@@ -13,21 +13,27 @@ import {
   TrelloCheckItem,
   TrelloCheckItemState,
   TrelloChecklist,
+  TrelloItemCache,
   TrelloLabel,
   TrelloList
 } from './interfaces';
-import { TrelloPlugin } from './plugin';
+import { PluginState } from './state';
+
+export type CacheState = Pick<
+  PluginState,
+  'cardActionsCache' | 'cardCache' | 'checklistCache' | 'labelCache' | 'listCache'
+>;
 
 export class TrelloAPI {
   private readonly token = new BehaviorSubject<string>('');
 
-  constructor(private readonly plugin: TrelloPlugin) {
-    this.plugin.state.settings
-      .pipe(
-        takeUntil(this.plugin.destroy),
-        map((settings) => settings.token)
-      )
-      .subscribe(this.token);
+  constructor(
+    token: Observable<string>,
+    private readonly state: CacheState,
+    private readonly log: (source: string, msg: string) => void,
+    private readonly ajax: typeof RxJSAjax = RxJSAjax
+  ) {
+    token.subscribe(this.token);
   }
 
   /**
@@ -35,34 +41,23 @@ export class TrelloAPI {
    * This is not cached.
    */
   getBoards(): Observable<TrelloBoard[]> {
-    this.plugin.log('TrelloAPI.getBoards', '');
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    const url = this.auth(`${TRELLO_API}/1/members/me/boards?fields=name,url`);
-    return ajax<TrelloBoard[]>({ url, crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err)),
-      map((resp) => resp.response)
-    );
+    this.log('TrelloAPI.getBoards', '');
+    const url = `${TRELLO_API}/1/members/me/boards?fields=name,url`;
+    return this.callAPI<TrelloBoard[]>({ url, crossDomain: true }).pipe(map((resp) => resp.response));
   }
 
   /**
    * Get a specific card by board and card ID.
    * This uses the cache if possible.
    */
-  getCardFromBoard(
-    boardId: string,
-    cardId: string,
-    bypassCache = false,
-    cacheExpireMs = 120000 // 2 minutes
-  ): Observable<TrelloCard> {
-    this.plugin.log('TrelloAPI.getCardFromBoard', '');
-    const cached = this.plugin.state.cardCache[cardId];
-    if (!cached || bypassCache || new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs) {
+  getCardFromBoard(boardId: string, cardId: string, bypassCache = false): Observable<TrelloCard> {
+    this.log('TrelloAPI.getCardFromBoard', '');
+    const cached = this.checkCache(this.state.cardCache, cardId, bypassCache, 12000);
+    if (!cached) {
       return this._getCardFromBoard(boardId, cardId);
     }
-    this.plugin.log('TrelloAPI.getCardFromBoard', '-> Returning cached value.');
-    return of(cached.item);
+    this.log('TrelloAPI.getCardFromBoard', '-> Returning cached value.');
+    return of(cached);
   }
 
   /**
@@ -70,16 +65,12 @@ export class TrelloAPI {
    * Always calls API and updates cache.
    */
   private _getCardFromBoard(boardId: string, cardId: string): Observable<TrelloCard> {
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/cards/${cardId}`);
-    return ajax<TrelloCard>({ url, crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err)),
+    const url = `${TRELLO_API}/1/boards/${boardId}/cards/${cardId}`;
+    return this.callAPI<TrelloCard>({ url, crossDomain: true }).pipe(
       map((resp) => resp.response),
       tap((card) => {
         if (card) {
-          this.plugin.state.cardCache[card.id] = {
+          this.state.cardCache[card.id] = {
             item: card,
             timestamp: new Date()
           };
@@ -92,14 +83,14 @@ export class TrelloAPI {
    * Get all labels for a given board.
    * This uses the cache if possible.
    */
-  getLabelsFromBoard(boardId: string, bypassCache = false, cacheExpireMs = 600000): Observable<TrelloLabel[]> {
-    this.plugin.log('TrelloAPI.getLabelsFromBoard', '');
-    const cached = this.plugin.state.labelCache[boardId];
-    if (!cached || bypassCache || new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs) {
+  getLabelsFromBoard(boardId: string, bypassCache = false): Observable<TrelloLabel[]> {
+    this.log('TrelloAPI.getLabelsFromBoard', '');
+    const cached = this.checkCache(this.state.labelCache, boardId, bypassCache, 600000);
+    if (!cached) {
       return this._getLabelsFromBoard(boardId);
     }
-    this.plugin.log('TrelloAPI.getLabelsFromBoard', '-> Returning cached value.');
-    return of(cached.item);
+    this.log('TrelloAPI.getLabelsFromBoard', '-> Returning cached value.');
+    return of(cached);
   }
 
   /**
@@ -107,15 +98,11 @@ export class TrelloAPI {
    * This updates the cache.
    */
   private _getLabelsFromBoard(boardId: string): Observable<TrelloLabel[]> {
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/labels`);
-    return ajax<TrelloLabel[]>({ url, crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err)),
+    const url = `${TRELLO_API}/1/boards/${boardId}/labels`;
+    return this.callAPI<TrelloLabel[]>({ url, crossDomain: true }).pipe(
       map((resp) => resp.response),
       tap((labels) => {
-        this.plugin.state.labelCache[boardId] = { item: labels, timestamp: new Date() };
+        this.state.labelCache[boardId] = { item: labels, timestamp: new Date() };
       })
     );
   }
@@ -125,18 +112,14 @@ export class TrelloAPI {
    * This is not cached, but updates the cache.
    */
   getListsFromBoard(boardId: string): Observable<TrelloList[]> {
-    this.plugin.log('TrelloAPI.getListsFromBoard', '');
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/lists`);
-    return ajax<TrelloList[]>({ url, crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err)),
+    this.log('TrelloAPI.getListsFromBoard', '');
+    const url = `${TRELLO_API}/1/boards/${boardId}/lists`;
+    return this.callAPI<TrelloList[]>({ url, crossDomain: true }).pipe(
       map((resp) => resp.response),
       tap((lists) => {
         if (lists && lists.length > 0) {
           lists.forEach((list) => {
-            this.plugin.state.listCache[list.id] = { item: list, timestamp: new Date() };
+            this.state.listCache[list.id] = { item: list, timestamp: new Date() };
           });
         }
       })
@@ -147,18 +130,14 @@ export class TrelloAPI {
    * Get a specific list by list ID.
    * This uses cache if possible.
    */
-  getList(
-    listId: string,
-    bypassCache = false,
-    cacheExpireMs = 600000 // 10 minutes
-  ): Observable<TrelloList> {
-    this.plugin.log('TrelloAPI.getList', '');
-    const cached = this.plugin.state.listCache[listId];
-    if (!cached || bypassCache || new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs) {
+  getList(listId: string, bypassCache = false): Observable<TrelloList> {
+    this.log('TrelloAPI.getList', '');
+    const cached = this.checkCache(this.state.listCache, listId, bypassCache, 600000);
+    if (!cached) {
       return this._getList(listId);
     }
-    this.plugin.log('TrelloAPI.getList', '-> Returning cached value.');
-    return of(cached.item);
+    this.log('TrelloAPI.getList', '-> Returning cached value.');
+    return of(cached);
   }
 
   /**
@@ -166,16 +145,12 @@ export class TrelloAPI {
    * Always calls API and updates cache.
    */
   private _getList(listId: string): Observable<TrelloList> {
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    const url = this.auth(`${TRELLO_API}/1/lists/${listId}`);
-    return ajax<TrelloList>({ url, crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err)),
+    const url = `${TRELLO_API}/1/lists/${listId}`;
+    return this.callAPI<TrelloList>({ url, crossDomain: true }).pipe(
       map((resp) => resp.response),
       tap((list) => {
         if (list) {
-          this.plugin.state.listCache[list.id] = { item: list, timestamp: new Date() };
+          this.state.listCache[list.id] = { item: list, timestamp: new Date() };
         }
       })
     );
@@ -186,17 +161,13 @@ export class TrelloAPI {
    * This always calls the API and updates the cache.
    */
   getCardsFromBoard(boardId: string): Observable<TrelloCard[]> {
-    this.plugin.log('TrelloAPI.getCardsFromBoard', '');
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/cards`);
-    return ajax<TrelloCard[]>({ url, crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err)),
+    this.log('TrelloAPI.getCardsFromBoard', '');
+    const url = `${TRELLO_API}/1/boards/${boardId}/cards`;
+    return this.callAPI<TrelloCard[]>({ url, crossDomain: true }).pipe(
       map((resp) => resp.response),
       tap((cards) => {
         cards.forEach((card) => {
-          this.plugin.state.cardCache[card.id] = {
+          this.state.cardCache[card.id] = {
             item: card,
             timestamp: new Date()
           };
@@ -213,16 +184,15 @@ export class TrelloAPI {
   getActionsFromCard(
     cardId: string,
     actionTypes: string[] = [TrelloActionType.Comment],
-    bypassCache = false,
-    cacheExpireMs = 60000 // 1 minute
+    bypassCache = false
   ): Observable<TrelloAction[]> {
-    this.plugin.log('TrelloAPI.getActionsFromCard', '');
-    const cached = this.plugin.state.cardActionsCache[cardId];
-    if (!cached || bypassCache || new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs) {
+    this.log('TrelloAPI.getActionsFromCard', '');
+    const cached = this.checkCache(this.state.cardActionsCache, cardId, bypassCache, 60000);
+    if (!cached) {
       return this._getActionsFromCard(cardId, actionTypes);
     }
-    this.plugin.log('TrelloAPI.getActionsFromCard', '-> Returning cached value.');
-    return of(cached.item);
+    this.log('TrelloAPI.getActionsFromCard', '-> Returning cached value.');
+    return of(cached);
   }
 
   /**
@@ -233,16 +203,13 @@ export class TrelloAPI {
     cardId: string,
     actionTypes: string[] = [TrelloActionType.Comment]
   ): Observable<TrelloAction[]> {
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    const url = this.auth(`${TRELLO_API}/1/cards/${cardId}/actions?filter=${actionTypes.join(',')}`);
-    return ajax<TrelloAction[]>({ url, crossDomain: true }).pipe(
+    const url = `${TRELLO_API}/1/cards/${cardId}/actions?filter=${actionTypes.join(',')}`;
+    return this.callAPI<TrelloAction[]>({ url, crossDomain: true }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response),
       tap((actions) => {
         if (actions) {
-          this.plugin.state.cardActionsCache[cardId] = { item: actions, timestamp: new Date() };
+          this.state.cardActionsCache[cardId] = { item: actions, timestamp: new Date() };
         }
       })
     );
@@ -258,8 +225,8 @@ export class TrelloAPI {
     bypassCache = false,
     cacheExpireMs = 60000 // 1 minute
   ): Observable<TrelloChecklist[]> {
-    this.plugin.log('TrelloAPI.getChecklistsFromCard', '');
-    const cached = checklistIds.map((id) => this.plugin.state.checklistCache[id]);
+    this.log('TrelloAPI.getChecklistsFromCard', '');
+    const cached = checklistIds.map((id) => this.state.checklistCache[id]);
     const cacheDate = new Date().getTime();
     if (
       !cached ||
@@ -268,7 +235,7 @@ export class TrelloAPI {
     ) {
       return this._getChecklistsFromCard(cardId);
     }
-    this.plugin.log('TrelloAPI.getChecklistsFromCard', '-> Returning cached value.');
+    this.log('TrelloAPI.getChecklistsFromCard', '-> Returning cached value.');
     return of(cached.map((c) => c.item));
   }
 
@@ -277,45 +244,37 @@ export class TrelloAPI {
    * Always calls the API and updates the cache.
    */
   private _getChecklistsFromCard(cardId: string): Observable<TrelloChecklist[]> {
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    const url = this.auth(`${TRELLO_API}/1/cards/${cardId}/checklists`);
-    return ajax<TrelloChecklist[]>({ url, crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err)),
+    const url = `${TRELLO_API}/1/cards/${cardId}/checklists`;
+    return this.callAPI<TrelloChecklist[]>({ url, crossDomain: true }).pipe(
       map((resp) => resp.response),
       tap((checklists) => {
         if (checklists && checklists.length > 0) {
           const cacheDate = new Date();
           checklists.forEach((c) => {
-            this.plugin.state.checklistCache[c.id] = { item: c, timestamp: cacheDate };
+            this.state.checklistCache[c.id] = { item: c, timestamp: cacheDate };
           });
         }
       })
     );
   }
 
-  getChecklist(checklistId: string, bypassCache = false, cacheExpireMs = 60000): Observable<TrelloChecklist> {
-    this.plugin.log('TrelloAPI.getChecklist', '');
-    const cached = this.plugin.state.checklistCache[checklistId];
-    if (!cached || bypassCache || new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs) {
+  getChecklist(checklistId: string, bypassCache = false): Observable<TrelloChecklist> {
+    this.log('TrelloAPI.getChecklist', '');
+    const cached = this.checkCache(this.state.checklistCache, checklistId, bypassCache, 60000);
+    if (!cached) {
       return this._getChecklist(checklistId);
     }
-    this.plugin.log('TrelloAPI.getChecklist', '-> Returning cached value.');
-    return of(cached.item);
+    this.log('TrelloAPI.getChecklist', '-> Returning cached value.');
+    return of(cached);
   }
 
   private _getChecklist(checklistId: string): Observable<TrelloChecklist> {
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    const url = this.auth(`${TRELLO_API}/1/checklists/${checklistId}`);
-    return ajax<TrelloChecklist>({ url, crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err)),
+    const url = `${TRELLO_API}/1/checklists/${checklistId}`;
+    return this.callAPI<TrelloChecklist>({ url, crossDomain: true }).pipe(
       map((resp) => resp.response),
       tap((checklists) => {
         if (checklists) {
-          this.plugin.state.checklistCache[checklistId] = { item: checklists, timestamp: new Date() };
+          this.state.checklistCache[checklistId] = { item: checklists, timestamp: new Date() };
         }
       })
     );
@@ -325,41 +284,31 @@ export class TrelloAPI {
    * Add a new comment to a card.
    */
   addCommentToCard(cardId: string, content: string): Observable<AjaxResponse<TrelloAction>> {
-    this.plugin.log('TrelloAPI.addCommentToCard', '');
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    const url = this.auth(`${TRELLO_API}/1/cards/${cardId}/actions/comments?text=${encodeURIComponent(content)}`);
-    return ajax<TrelloAction>({ url, method: 'POST', crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err))
-    );
+    this.log('TrelloAPI.addCommentToCard', '');
+    const url = `${TRELLO_API}/1/cards/${cardId}/actions/comments?text=${encodeURIComponent(content)}`;
+    return this.callAPI<TrelloAction>({ url, method: 'POST', crossDomain: true }).pipe();
   }
 
   /**
    * Add new card
    */
   addNewCard(request: NewCardRequest): Observable<AjaxResponse<TrelloCard>> {
-    this.plugin.log('TrelloAPI.addNewCard', '');
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    let url = this.auth(`${TRELLO_API}/1/cards`);
+    this.log('TrelloAPI.addNewCard', '');
+    let url = `${TRELLO_API}/1/cards`;
     // Add parameters
     url = this.addQueryParam(url, 'idList', request.idList);
     url = this.addQueryParam(url, 'name', request.name, true);
     url = this.addQueryParam(url, 'desc', request.desc, true);
     url = this.addQueryParam(url, 'pos', request.pos);
     url = this.addQueryParam(url, 'idLabels', request.idLabels ? request.idLabels.join(',') : undefined);
-    return ajax<TrelloCard>({ url, method: 'POST', crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err))
-    );
+    return this.callAPI<TrelloCard>({ url, method: 'POST', crossDomain: true }).pipe();
   }
 
   /**
    * Update the list on a card by card and list id
    */
   updateCardList(cardId: string, idList: string, position: CardPosition = CardPosition.Top): Observable<TrelloCard> {
-    this.plugin.log('TrelloAPI.updateCardList', '');
+    this.log('TrelloAPI.updateCardList', '');
     return this.updateCard({ id: cardId, idList, pos: position });
   }
 
@@ -367,7 +316,7 @@ export class TrelloAPI {
    * Check/uncheck a checkItem
    */
   updateCheckItemState(cardId: string, checkItemId: string, state: TrelloCheckItemState): Observable<TrelloCheckItem> {
-    this.plugin.log('TrelloAPI.updateCheckItemState', '');
+    this.log('TrelloAPI.updateCheckItemState', '');
     return this.updateCheckItem(cardId, { id: checkItemId, state });
   }
 
@@ -376,11 +325,8 @@ export class TrelloAPI {
    * All updates should be proxied through individual methods.
    */
   private updateCard(updatedCard: Partial<TrelloCard> & { id: string }): Observable<TrelloCard> {
-    this.plugin.log('TrelloAPI.updateCard', '');
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    let url = this.auth(`${TRELLO_API}/1/cards/${updatedCard.id}`);
+    this.log('TrelloAPI.updateCard', '');
+    let url = `${TRELLO_API}/1/cards/${updatedCard.id}`;
     // Add parameters. Only some properties can be updated here.
     url = this.addQueryParam(url, 'name', updatedCard.name, true);
     url = this.addQueryParam(url, 'desc', updatedCard.desc, true);
@@ -395,10 +341,7 @@ export class TrelloAPI {
       url = this.addQueryParam(url, 'dueComplete', updatedCard.dueComplete.toString());
     }
 
-    return ajax<TrelloCard>({ url, method: 'PUT', crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err)),
-      map((resp) => resp.response)
-    );
+    return this.callAPI<TrelloCard>({ url, method: 'PUT', crossDomain: true }).pipe(map((resp) => resp.response));
   }
 
   /**
@@ -409,20 +352,38 @@ export class TrelloAPI {
     cardId: string,
     updatedCheckItem: Partial<TrelloCheckItem> & { id: string }
   ): Observable<TrelloCheckItem> {
-    this.plugin.log('TrelloAPI.updateCheckItem', '');
-    if (this.token.value === '') {
-      return throwError(() => PluginError.NoToken);
-    }
-    let url = this.auth(`${TRELLO_API}/1/cards/${cardId}/checkItem/${updatedCheckItem.id}`);
+    this.log('TrelloAPI.updateCheckItem', '');
+    let url = `${TRELLO_API}/1/cards/${cardId}/checkItem/${updatedCheckItem.id}`;
     // Add parameters. Only some properties can be updated here.
     url = this.addQueryParam(url, 'name', updatedCheckItem.name, true);
     url = this.addQueryParam(url, 'state', updatedCheckItem.state, true);
     url = this.addQueryParam(url, 'idChecklist', updatedCheckItem.idChecklist);
 
-    return ajax<TrelloCheckItem>({ url, method: 'PUT', crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err)),
-      map((resp) => resp.response)
-    );
+    return this.callAPI<TrelloCheckItem>({ url, method: 'PUT', crossDomain: true }).pipe(map((resp) => resp.response));
+  }
+
+  /**
+   * Checks the given cache for an item. Returns null
+   * if the item is not found or if the cache is being
+   * bypassed or if it is expired. Otherwise, returns the item.
+   */
+  checkCache<T>(cache: TrelloItemCache<T>, itemId: string, bypassCache: boolean, cacheExpireMs: number): T | null {
+    const cached = cache[itemId];
+    if (!cached || bypassCache || new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs) {
+      null;
+    }
+    return cached.item;
+  }
+
+  /**
+   * Throws an error if there's no token. Applies auth to the URL.
+   */
+  callAPI<T>(config: AjaxConfig): Observable<AjaxResponse<T>> {
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
+    config.url = this.auth(config.url);
+    return this.ajax<T>(config).pipe(catchError((err) => this.handleAPIError(err)));
   }
 
   /**
