@@ -45,7 +45,9 @@ export enum LeafSide {
   Right = 'right'
 }
 
-export type TrelloItemCache<T> = Record<string, { item: T; timestamp: Date }>;
+export type TrelloCacheItem<T> = { item: T; timestamp: Date };
+
+export type TrelloItemCache<T> = Map<string, TrelloCacheItem<T>>;
 
 // 3rd Party
 export interface MetaEditApi {
@@ -56,8 +58,11 @@ export interface MetaEditApi {
 }
 
 // Trello DTO
-export interface TrelloUser {
+export interface TrelloEntity {
   id: string;
+}
+
+export interface TrelloUser extends TrelloEntity {
   activityBlocked: boolean;
   avatarHash: string | null;
   avatarUrl: string | null;
@@ -69,8 +74,7 @@ export interface TrelloUser {
   idBoards: string[];
   idOrganizations: string[];
 }
-export interface TrelloBoard {
-  id: string;
+export interface TrelloBoard extends TrelloEntity {
   name: string;
   desc: string;
   closed: boolean;
@@ -79,21 +83,18 @@ export interface TrelloBoard {
   labelNames: Record<TrelloLabelColor, string>;
 }
 
-export interface TrelloList {
-  id: string;
+export interface TrelloList extends TrelloEntity {
   name: string;
   idBoard: string;
 }
 
-export interface TrelloLabel {
-  id: string;
+export interface TrelloLabel extends TrelloEntity {
   idBoard: string;
   name: string;
   color: TrelloLabelColor | null;
 }
 
-export interface TrelloCard {
-  id: string;
+export interface TrelloCard extends TrelloEntity {
   checkItemStates:
     | null
     | [
@@ -142,8 +143,7 @@ export enum TrelloLabelColor {
   Black = 'black'
 }
 
-export interface TrelloAction {
-  id: string;
+export interface TrelloAction extends TrelloEntity {
   idMemberCreator: string;
   data: {
     text: string;
@@ -169,10 +169,9 @@ export interface NewCardRequest {
   idLabels?: string[];
 }
 
-export interface TrelloCheckItem {
+export interface TrelloCheckItem extends TrelloEntity {
   idChecklist: string;
   state: TrelloCheckItemState;
-  id: string;
   name: string;
   nameData: null | any; // unknown
   pos: number;
@@ -180,8 +179,7 @@ export interface TrelloCheckItem {
   // "idMember": null
 }
 
-export interface TrelloChecklist {
-  id: string;
+export interface TrelloChecklist extends TrelloEntity {
   name: string;
   idCard: string;
   pos: number;

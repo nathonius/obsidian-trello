@@ -66,3 +66,19 @@ export const NEW_TRELLO_CARD: TrelloCard = {
 
 // Milliseconds to wait between meta updates
 export const METAEDIT_DEBOUNCE = 30;
+
+export enum CacheType {
+  Card = 'Card',
+  CardActions = 'CardActions',
+  List = 'List',
+  Label = 'Label',
+  Checklist = 'Checklist'
+}
+
+export const CacheTimeout: Record<CacheType, number> = {
+  [CacheType.Card]: 12000,
+  [CacheType.CardActions]: 60000,
+  [CacheType.List]: 600000,
+  [CacheType.Label]: 600000,
+  [CacheType.Checklist]: 60000
+};

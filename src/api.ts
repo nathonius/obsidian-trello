@@ -1,7 +1,8 @@
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { ajax as RxJSAjax, AjaxConfig, AjaxError, AjaxResponse } from 'rxjs/ajax';
 import { map, tap, catchError } from 'rxjs/operators';
-import { TRELLO_API, TRELLO_API_KEY } from './constants';
+import { CacheTypes, TrelloPluginCache } from './cache';
+import { CacheType, TRELLO_API, TRELLO_API_KEY } from './constants';
 import {
   CardPosition,
   NewCardRequest,
@@ -13,6 +14,7 @@ import {
   TrelloCheckItem,
   TrelloCheckItemState,
   TrelloChecklist,
+  TrelloEntity,
   TrelloItemCache,
   TrelloLabel,
   TrelloList
@@ -29,7 +31,7 @@ export class TrelloAPI {
 
   constructor(
     token: Observable<string>,
-    private readonly state: CacheState,
+    private readonly cache: TrelloPluginCache,
     private readonly log: (source: string, msg: string) => void,
     private readonly ajax: typeof RxJSAjax = RxJSAjax
   ) {
@@ -360,6 +362,44 @@ export class TrelloAPI {
     url = this.addQueryParam(url, 'idChecklist', updatedCheckItem.idChecklist);
 
     return this.callAPI<TrelloCheckItem>({ url, method: 'PUT', crossDomain: true }).pipe(map((resp) => resp.response));
+  }
+
+  // Each API method needs to:
+  // OPTIONALLY Check the cache for existing value(s)
+  // Call the correct API if no value is cached, bypassing cache, or cache has expired
+  // API call must be authenticated
+  // API error response should be handled
+  // API response should be transformed into the expected form
+  // OPTIONALLY API response should be cached appropriately
+  private apiCall<T extends CacheTypes>(
+    url: string,
+    itemId?: string,
+    itemType?: CacheType,
+    bypassCache = false,
+    cacheResponse = true
+  ): Observable<T> {
+    if (!bypassCache && itemId && itemType) {
+      const cached = this.cache.getItem<T>(itemId, itemType);
+      if (cached) {
+        return of(cached.item);
+      }
+    }
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
+    return this.ajax<T>({ url: this.auth(url), crossDomain: true }).pipe(
+      catchError((err) => this.handleAPIError(err)),
+      map((resp) => resp.response),
+      tap((item) => {
+        if (cacheResponse && itemType) {
+
+        }
+      })
+    );
+  }
+
+  private cacheSingle<T extends CacheTypes>(itemId: string, item: T, itemType: CacheType): void {
+    this.cache.setItem(itemId,  item, itemType);
   }
 
   /**
