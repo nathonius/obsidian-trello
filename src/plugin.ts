@@ -1,4 +1,4 @@
-import { FileView, Notice, Plugin, addIcon, TFile, WorkspaceLeaf } from 'obsidian';
+import { Notice, Plugin, addIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import { concat, forkJoin, from, iif, Observable, of, Subject } from 'rxjs';
 import { take, map, concatMap, tap, takeUntil, delay } from 'rxjs/operators';
 import { nanoid } from 'nanoid';
@@ -180,133 +180,148 @@ export class TrelloPlugin extends Plugin {
    * Adds the board and card IDs to the frontmatter of the note, then reveals the leaf
    */
   connectTrelloCard(): void {
-    const view = this.app.workspace.activeLeaf?.view;
+    const file = this.app.workspace.getActiveFile();
+    if (!file) {
+      this.log('TrelloPlugin.connectTrelloCard', 'No file available to connect trello card.', LogLevel.Warn);
+      return;
+    }
+
+    if (!this.metaEdit.available) {
+      this.log('TrelloPlugin.connectTrelloCard', 'MetaEdit unavailable, not connecting card.', LogLevel.Warn);
+      return;
+    }
 
     // Might need this later
     let board: TrelloBoard;
 
-    if (view instanceof FileView && this.metaEdit.available) {
-      this.log('TrelloPlugin.connectTrelloCard', 'Connecting trello card');
-      this.state.settings
-        .pipe(
-          take(1),
-          map((s) => s.selectedBoards),
-          // If boards were selected, use those. Otherwise, call API.
-          concatMap((boards) => iif(() => boards.length > 0, of(boards), this.api.getBoards())),
-          tap(() => {
-            this.log('TrelloPlugin.connectTrelloCard', '-> Got boards');
-          }),
-          // Open board suggestion modal
-          concatMap((boards) => this.selectBoard(boards)),
-          tap((selectedBoard) => {
-            this.log('TrelloPlugin.connectTrelloCard', `-> Selected board ${selectedBoard.id}`);
-            board = selectedBoard;
-          }),
-          // Get available cards from selected board
-          concatMap((selectedBoard) => this.api.getCardsFromBoard(selectedBoard.id)),
-          tap((cards) => {
-            this.log('TrelloPlugin.connectTrelloCard', `-> Got ${cards.length} cards.`);
-          }),
-          // Open card suggestion modal
-          concatMap((cards: TrelloCard[]) => this.selectCard(cards)),
-          tap((selectedCard: TrelloCard) => {
-            this.log('TrelloPlugin.connectTrelloCard', `-> Selected card ${selectedCard.id}`);
-          }),
-          concatMap((selectedCard: TrelloCard) =>
-            iif(
-              () => selectedCard === NEW_TRELLO_CARD,
-              this.addNewCard(board).pipe(
-                tap(() => {
-                  this.log('TrelloPlugin.connectTrelloCard', 'Beginning add new card flow.');
-                })
-              ),
-              of(selectedCard).pipe(
-                tap(() => {
-                  this.log('TrelloPlugin.connectTrelloCard', '-> Selected existing card');
-                })
-              )
+    this.log('TrelloPlugin.connectTrelloCard', 'Connecting trello card');
+    this.state.settings
+      .pipe(
+        take(1),
+        map((s) => s.selectedBoards),
+        // If boards were selected, use those. Otherwise, call API.
+        concatMap((boards) => iif(() => boards.length > 0, of(boards), this.api.getBoards())),
+        tap(() => {
+          this.log('TrelloPlugin.connectTrelloCard', '-> Got boards');
+        }),
+        // Open board suggestion modal
+        concatMap((boards) => this.selectBoard(boards)),
+        tap((selectedBoard) => {
+          this.log('TrelloPlugin.connectTrelloCard', `-> Selected board ${selectedBoard.id}`);
+          board = selectedBoard;
+        }),
+        // Get available cards from selected board
+        concatMap((selectedBoard) => this.api.getCardsFromBoard(selectedBoard.id)),
+        tap((cards) => {
+          this.log('TrelloPlugin.connectTrelloCard', `-> Got ${cards.length} cards.`);
+        }),
+        // Open card suggestion modal
+        concatMap((cards: TrelloCard[]) => this.selectCard(cards)),
+        tap((selectedCard: TrelloCard) => {
+          this.log('TrelloPlugin.connectTrelloCard', `-> Selected card ${selectedCard.id}`);
+        }),
+        concatMap((selectedCard: TrelloCard) =>
+          iif(
+            () => selectedCard === NEW_TRELLO_CARD,
+            this.addNewCard(board).pipe(
+              tap(() => {
+                this.log('TrelloPlugin.connectTrelloCard', 'Beginning add new card flow.');
+              })
+            ),
+            of(selectedCard).pipe(
+              tap(() => {
+                this.log('TrelloPlugin.connectTrelloCard', '-> Selected existing card');
+              })
             )
-          ),
-          concatMap((selectedCard: TrelloCard) =>
-            forkJoin({
-              selectedCard: of(selectedCard),
-              existingId: from(this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, view.file))
-            })
-          ),
-          map(({ selectedCard, existingId }: { selectedCard: TrelloCard; existingId: string | undefined }) => {
-            const trelloId = existingId ? existingId : nanoid();
-            this.log('TrelloPlugin.connectTrelloCard', `-> Updating file with plugin ID ${trelloId}`);
-            this.state.updateConnectedCard(trelloId, { cardId: selectedCard.id, boardId: selectedCard.idBoard });
-            this.state.connectedCardId.next(trelloId);
-            const boardCardId = `${selectedCard.idBoard};${selectedCard.id}`;
-            this.log('TrelloPlugin.connectTrelloCard', `-> Updating file with board/card ID ${boardCardId}`);
-            this.state.boardCardId.next(boardCardId);
-            return { boardCardId, trelloId };
-          }),
-          concatMap(({ boardCardId, trelloId }: { boardCardId: string; trelloId: string }) =>
-            concat(
-              this.metaEdit.updateOrCreateMeta(MetaKey.TrelloId, trelloId, view.file).pipe(
-                tap(() => {
-                  this.log('TrelloPlugin.connectTrelloCard', '-> Adding plugin ID meta key.');
-                }),
-                delay(METAEDIT_DEBOUNCE)
-              ),
-              this.metaEdit.updateOrCreateMeta(MetaKey.BoardCard, boardCardId, view.file).pipe(
-                tap(() => {
-                  this.log('TrelloPlugin.connectTrelloCard', '-> Adding board/card ID meta key.');
-                })
-              )
+          )
+        ),
+        concatMap((selectedCard: TrelloCard) =>
+          forkJoin({
+            selectedCard: of(selectedCard),
+            existingId: from(this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, file))
+          })
+        ),
+        map(({ selectedCard, existingId }: { selectedCard: TrelloCard; existingId: string | undefined }) => {
+          const trelloId = existingId ? existingId : nanoid();
+          this.log('TrelloPlugin.connectTrelloCard', `-> Updating file with plugin ID ${trelloId}`);
+          this.state.updateConnectedCard(trelloId, { cardId: selectedCard.id, boardId: selectedCard.idBoard });
+          this.state.connectedCardId.next(trelloId);
+          const boardCardId = `${selectedCard.idBoard};${selectedCard.id}`;
+          this.log('TrelloPlugin.connectTrelloCard', `-> Updating file with board/card ID ${boardCardId}`);
+          this.state.boardCardId.next(boardCardId);
+          return { boardCardId, trelloId };
+        }),
+        concatMap(({ boardCardId, trelloId }: { boardCardId: string; trelloId: string }) =>
+          concat(
+            this.metaEdit.updateOrCreateMeta(MetaKey.TrelloId, trelloId, file).pipe(
+              tap(() => {
+                this.log('TrelloPlugin.connectTrelloCard', '-> Adding plugin ID meta key.');
+              }),
+              delay(METAEDIT_DEBOUNCE)
+            ),
+            this.metaEdit.updateOrCreateMeta(MetaKey.BoardCard, boardCardId, file).pipe(
+              tap(() => {
+                this.log('TrelloPlugin.connectTrelloCard', '-> Adding board/card ID meta key.');
+              })
             )
           )
         )
-        .subscribe({
-          next: () => {
-            this.log('TrelloPlugin.connectTrelloCard', '-> Done connecting card.');
-            this.revealTrelloLeaf(true);
-          },
-          error: (err) => {
-            if (err === PluginError.Abort) {
-              this.log('TrelloPlugin.connectTrelloCard', '-> Aborting connect flow.');
-            } else if (err === PluginError.Unauthorized) {
-              this.log('TrelloPlugin.connectTrelloCard', '-> API returned unauthorized.', LogLevel.Error);
-              new Notice(TRELLO_ERRORS.unauthorized);
-            } else if (err === PluginError.RateLimit) {
-              this.log('TrelloPlugin.connectTrelloCard', '-> API returned rate limit error.', LogLevel.Error);
-              new Notice(TRELLO_ERRORS.rateLimit);
-            } else if (err === PluginError.NoToken) {
-              this.log('TrelloPlugin.connectTrelloCard', '-> No token present.', LogLevel.Error);
-              new Notice(TRELLO_ERRORS.noToken);
-            } else if (err === PluginError.Unknown) {
-              this.log('TrelloPlugin.connectTrelloCard', '-> Caught unknown error.', LogLevel.Error);
-              new Notice(TRELLO_ERRORS.other);
-            }
+      )
+      .subscribe({
+        next: () => {
+          this.log('TrelloPlugin.connectTrelloCard', '-> Done connecting card.');
+          this.revealTrelloLeaf(true);
+        },
+        error: (err) => {
+          if (err === PluginError.Abort) {
+            this.log('TrelloPlugin.connectTrelloCard', '-> Aborting connect flow.');
+          } else if (err === PluginError.Unauthorized) {
+            this.log('TrelloPlugin.connectTrelloCard', '-> API returned unauthorized.', LogLevel.Error);
+            new Notice(TRELLO_ERRORS.unauthorized);
+          } else if (err === PluginError.RateLimit) {
+            this.log('TrelloPlugin.connectTrelloCard', '-> API returned rate limit error.', LogLevel.Error);
+            new Notice(TRELLO_ERRORS.rateLimit);
+          } else if (err === PluginError.NoToken) {
+            this.log('TrelloPlugin.connectTrelloCard', '-> No token present.', LogLevel.Error);
+            new Notice(TRELLO_ERRORS.noToken);
+          } else if (err === PluginError.Unknown) {
+            this.log('TrelloPlugin.connectTrelloCard', '-> Caught unknown error.', LogLevel.Error);
+            new Notice(TRELLO_ERRORS.other);
           }
-        });
-    }
+        }
+      });
   }
 
   /**
    * Removes the trello frontmatter property from the current file.
    */
   async disconnectTrelloCard(): Promise<void> {
-    const view = this.app.workspace.activeLeaf?.view;
+    const file = this.app.workspace.getActiveFile();
 
-    if (view instanceof FileView && this.metaEdit.available) {
-      this.log('TrelloPlugin.disconnectTrelloCard', 'Disconnecting trello connected card.');
-
-      const existingPluginId = await this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, view.file);
-      if (existingPluginId) {
-        await this.metaEdit.plugin.deleteProperty(MetaKey.TrelloId, view.file);
-        await new Promise((resolve) => window.setTimeout(resolve, METAEDIT_DEBOUNCE));
-        this.state.updateConnectedCard(existingPluginId, null);
-        this.state.connectedCardId.next(null);
-        this.log('TrelloPlugin.disconnectTrelloCard', '-> Removed plugin ID.');
-      }
-
-      await this.metaEdit.plugin.deleteProperty(MetaKey.BoardCard, view.file);
-      this.state.boardCardId.next(null);
-      this.log('TrelloPlugin.disconnectTrelloCard', '-> Removed board/card ID.');
+    if (!file) {
+      this.log('TrelloPlugin.disconnectTrelloCard', 'No file available to connect trello card.', LogLevel.Warn);
+      return;
     }
+
+    if (!this.metaEdit.available) {
+      this.log('TrelloPlugin.disconnectTrelloCard', 'MetaEdit unavailable, not connecting card.', LogLevel.Warn);
+      return;
+    }
+
+    this.log('TrelloPlugin.disconnectTrelloCard', 'Disconnecting trello connected card.');
+
+    const existingPluginId = await this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, file);
+    if (existingPluginId) {
+      await this.metaEdit.plugin.deleteProperty(MetaKey.TrelloId, file);
+      await new Promise((resolve) => window.setTimeout(resolve, METAEDIT_DEBOUNCE));
+      this.state.updateConnectedCard(existingPluginId, null);
+      this.state.connectedCardId.next(null);
+      this.log('TrelloPlugin.disconnectTrelloCard', '-> Removed plugin ID.');
+    }
+
+    await this.metaEdit.plugin.deleteProperty(MetaKey.BoardCard, file);
+    this.state.boardCardId.next(null);
+    this.log('TrelloPlugin.disconnectTrelloCard', '-> Removed board/card ID.');
   }
 
   private selectBoard(boards: TrelloBoard[]): Observable<TrelloBoard> {
