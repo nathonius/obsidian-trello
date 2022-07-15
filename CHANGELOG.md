@@ -1,3 +1,9 @@
+# v1.6.1
+
+## Fixes
+
+- Restore compatibility with v0.15.x versions of Obsidian
+
 # v1.6.0
 
 ## Features
