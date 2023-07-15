@@ -1,3 +1,13 @@
+> Development Status: Maintenance Mode
+>
+> This plugin is now entering maintenance mode for the time being. I no longer use Trello. If interested in taking over this plugin, message me on Discord.
+> 
+> 1. PR's will be reviewed.
+> 2. Bugs will be reviewed and worked if able.
+> 3. Feature Requests will not be worked.
+
+
+
 # Obsidian Trello
 
 ![ObsidianTrello](doc/screenshot.png)
