@@ -1,29 +1,29 @@
-import { Notice, Plugin, addIcon, TFile, WorkspaceLeaf } from 'obsidian';
-import { concat, forkJoin, from, iif, Observable, of, Subject } from 'rxjs';
-import { take, map, concatMap, tap, takeUntil, delay } from 'rxjs/operators';
-import { nanoid } from 'nanoid';
+import { BoardSuggestModal, CardCreateModal, CardSuggestModal, CustomizeUIModal, ListSuggestModal } from './modal';
 import {
   CUSTOM_ICONS,
   DEFAULT_DATA,
   DEFAULT_SETTINGS,
   LogLevel,
-  METAEDIT_DEBOUNCE,
   MetaKey,
   NEW_TRELLO_CARD,
   TRELLO_ERRORS,
   TRELLO_VIEW_TYPE
 } from './constants';
 import { LeafSide, PluginData, PluginError, TrelloBoard, TrelloCard } from './interfaces';
+import { Notice, Plugin, TFile, WorkspaceLeaf, addIcon } from 'obsidian';
+import { Observable, Subject, concat, forkJoin, iif, of } from 'rxjs';
+import { concatMap, delay, map, take, takeUntil, tap } from 'rxjs/operators';
+
+import { PluginState } from './state';
 import { TrelloAPI } from './api';
 import { TrelloSettings } from './settings';
-import { PluginState } from './state';
-import { CardSuggestModal, BoardSuggestModal, CardCreateModal, ListSuggestModal, CustomizeUIModal } from './modal';
 import { TrelloView } from './view/view';
+import { YamlHandler } from './yaml-handler';
 import { migrate } from './migrations';
-import { MetaEditWrapper } from './meta-edit';
+import { nanoid } from 'nanoid';
 
 export class TrelloPlugin extends Plugin {
-  metaEdit = new MetaEditWrapper(this);
+  yamlHandler = new YamlHandler(this);
   api!: TrelloAPI;
   state!: PluginState;
   view!: TrelloView;
@@ -145,19 +145,18 @@ export class TrelloPlugin extends Plugin {
    */
   private async handleFile(file: TFile | null): Promise<void> {
     // See if we need to do anything
-    if (!file || !this.metaEdit.available) {
+    if (!file) {
       return;
     }
 
-    const boardCardId = await this.metaEdit.plugin.getPropertyValue(MetaKey.BoardCard, file);
-    let trelloId = await this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, file);
+    const boardCardId = await this.yamlHandler.getPropertyValue(MetaKey.BoardCard, file);
+    let trelloId = await this.yamlHandler.getPropertyValue(MetaKey.TrelloId, file);
 
     if (boardCardId && !trelloId) {
       // Migrate to add new ID
       const newId = nanoid();
       const [boardId, cardId] = boardCardId.split(';');
-      await this.metaEdit.plugin.createYamlProperty(MetaKey.TrelloId, newId, file);
-      await new Promise((resolve) => window.setTimeout(resolve, METAEDIT_DEBOUNCE));
+      await this.yamlHandler.updateOrCreateMeta(MetaKey.TrelloId, newId, file);
       this.state.updateConnectedCard(newId, { boardId, cardId });
       trelloId = newId;
     }
@@ -183,11 +182,6 @@ export class TrelloPlugin extends Plugin {
     const file = this.app.workspace.getActiveFile();
     if (!file) {
       this.log('TrelloPlugin.connectTrelloCard', 'No file available to connect trello card.', LogLevel.Warn);
-      return;
-    }
-
-    if (!this.metaEdit.available) {
-      this.log('TrelloPlugin.connectTrelloCard', 'MetaEdit unavailable, not connecting card.', LogLevel.Warn);
       return;
     }
 
@@ -238,7 +232,7 @@ export class TrelloPlugin extends Plugin {
         concatMap((selectedCard: TrelloCard) =>
           forkJoin({
             selectedCard: of(selectedCard),
-            existingId: from(this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, file))
+            existingId: of(this.yamlHandler.getPropertyValue(MetaKey.TrelloId, file))
           })
         ),
         map(({ selectedCard, existingId }: { selectedCard: TrelloCard; existingId: string | undefined }) => {
@@ -253,13 +247,12 @@ export class TrelloPlugin extends Plugin {
         }),
         concatMap(({ boardCardId, trelloId }: { boardCardId: string; trelloId: string }) =>
           concat(
-            this.metaEdit.updateOrCreateMeta(MetaKey.TrelloId, trelloId, file).pipe(
+            this.yamlHandler.updateOrCreateMeta(MetaKey.TrelloId, trelloId, file).pipe(
               tap(() => {
                 this.log('TrelloPlugin.connectTrelloCard', '-> Adding plugin ID meta key.');
-              }),
-              delay(METAEDIT_DEBOUNCE)
+              })
             ),
-            this.metaEdit.updateOrCreateMeta(MetaKey.BoardCard, boardCardId, file).pipe(
+            this.yamlHandler.updateOrCreateMeta(MetaKey.BoardCard, boardCardId, file).pipe(
               tap(() => {
                 this.log('TrelloPlugin.connectTrelloCard', '-> Adding board/card ID meta key.');
               })
@@ -303,23 +296,17 @@ export class TrelloPlugin extends Plugin {
       return;
     }
 
-    if (!this.metaEdit.available) {
-      this.log('TrelloPlugin.disconnectTrelloCard', 'MetaEdit unavailable, not connecting card.', LogLevel.Warn);
-      return;
-    }
-
     this.log('TrelloPlugin.disconnectTrelloCard', 'Disconnecting trello connected card.');
 
-    const existingPluginId = await this.metaEdit.plugin.getPropertyValue(MetaKey.TrelloId, file);
+    const existingPluginId = this.yamlHandler.getPropertyValue(MetaKey.TrelloId, file);
     if (existingPluginId) {
-      await this.metaEdit.plugin.deleteProperty(MetaKey.TrelloId, file);
-      await new Promise((resolve) => window.setTimeout(resolve, METAEDIT_DEBOUNCE));
+      await this.yamlHandler.deleteProperty(MetaKey.TrelloId, file);
       this.state.updateConnectedCard(existingPluginId, null);
       this.state.connectedCardId.next(null);
       this.log('TrelloPlugin.disconnectTrelloCard', '-> Removed plugin ID.');
     }
 
-    await this.metaEdit.plugin.deleteProperty(MetaKey.BoardCard, file);
+    await this.yamlHandler.deleteProperty(MetaKey.BoardCard, file);
     this.state.boardCardId.next(null);
     this.log('TrelloPlugin.disconnectTrelloCard', '-> Removed board/card ID.');
   }
