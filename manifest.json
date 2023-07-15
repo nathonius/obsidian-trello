@@ -1,8 +1,8 @@
 {
   "id": "obsidian-trello",
   "name": "Obsidian Trello",
-  "version": "1.6.1",
-  "minAppVersion": "0.15.5",
+  "version": "2.0.0",
+  "minAppVersion": "1.2.0",
   "description": "Connect an existing or new Trello card to an Obsidian note. Once connected, see basic info, add and view comments, and check off checklist items.",
   "author": "OfficerHalf",
   "authorUrl": "https://nathan-smith.org/",

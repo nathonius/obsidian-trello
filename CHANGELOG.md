@@ -1,3 +1,17 @@
+# v2.0.0
+
+## BREAKING CHANGES
+
+- Breaks compatibility with many old versions of Obsidian. Should only be used on latest versions.
+
+## Fixes
+
+- Prevent CORS errors by using requestUrl instead of RxJS Ajax
+
+## Features
+
+- MetaEdit is no longer required for use
+
 # v1.6.1
 
 ## Fixes
