@@ -12,7 +12,7 @@ import {
 import { LeafSide, PluginData, PluginError, TrelloBoard, TrelloCard } from './interfaces';
 import { Notice, Plugin, TFile, WorkspaceLeaf, addIcon } from 'obsidian';
 import { Observable, Subject, concat, forkJoin, iif, of } from 'rxjs';
-import { concatMap, delay, map, take, takeUntil, tap } from 'rxjs/operators';
+import { concatMap, map, take, takeUntil, tap } from 'rxjs/operators';
 
 import { PluginState } from './state';
 import { TrelloAPI } from './api';
