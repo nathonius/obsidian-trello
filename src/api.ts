@@ -56,7 +56,7 @@ export class TrelloAPI {
       return throwError(() => PluginError.NoToken);
     }
     const url = this.auth(`${TRELLO_API}/1/members/me/boards?fields=name,url`);
-    return ajax<TrelloBoard[]>({ url, crossDomain: true }).pipe(
+    return ajax<TrelloBoard[]>({ url }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response)
     );
@@ -90,7 +90,7 @@ export class TrelloAPI {
       return throwError(() => PluginError.NoToken);
     }
     const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/cards/${cardId}`);
-    return ajax<TrelloCard>({ url, crossDomain: true }).pipe(
+    return ajax<TrelloCard>({ url }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response),
       tap((card) => {
@@ -127,7 +127,7 @@ export class TrelloAPI {
       return throwError(() => PluginError.NoToken);
     }
     const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/labels`);
-    return ajax<TrelloLabel[]>({ url, crossDomain: true }).pipe(
+    return ajax<TrelloLabel[]>({ url }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response),
       tap((labels) => {
@@ -146,7 +146,7 @@ export class TrelloAPI {
       return throwError(() => PluginError.NoToken);
     }
     const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/lists`);
-    return ajax<TrelloList[]>({ url, crossDomain: true }).pipe(
+    return ajax<TrelloList[]>({ url }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response),
       tap((lists) => {
@@ -186,7 +186,7 @@ export class TrelloAPI {
       return throwError(() => PluginError.NoToken);
     }
     const url = this.auth(`${TRELLO_API}/1/lists/${listId}`);
-    return ajax<TrelloList>({ url, crossDomain: true }).pipe(
+    return ajax<TrelloList>({ url }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response),
       tap((list) => {
@@ -207,7 +207,7 @@ export class TrelloAPI {
       return throwError(() => PluginError.NoToken);
     }
     const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/cards`);
-    return ajax<TrelloCard[]>({ url, crossDomain: true }).pipe(
+    return ajax<TrelloCard[]>({ url }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response),
       tap((cards) => {
@@ -253,7 +253,7 @@ export class TrelloAPI {
       return throwError(() => PluginError.NoToken);
     }
     const url = this.auth(`${TRELLO_API}/1/cards/${cardId}/actions?filter=${actionTypes.join(',')}`);
-    return ajax<TrelloAction[]>({ url, crossDomain: true }).pipe(
+    return ajax<TrelloAction[]>({ url }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response),
       tap((actions) => {
@@ -297,7 +297,7 @@ export class TrelloAPI {
       return throwError(() => PluginError.NoToken);
     }
     const url = this.auth(`${TRELLO_API}/1/cards/${cardId}/checklists`);
-    return ajax<TrelloChecklist[]>({ url, crossDomain: true }).pipe(
+    return ajax<TrelloChecklist[]>({ url }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response),
       tap((checklists) => {
@@ -326,7 +326,7 @@ export class TrelloAPI {
       return throwError(() => PluginError.NoToken);
     }
     const url = this.auth(`${TRELLO_API}/1/checklists/${checklistId}`);
-    return ajax<TrelloChecklist>({ url, crossDomain: true }).pipe(
+    return ajax<TrelloChecklist>({ url }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response),
       tap((checklists) => {
@@ -346,9 +346,7 @@ export class TrelloAPI {
       return throwError(() => PluginError.NoToken);
     }
     const url = this.auth(`${TRELLO_API}/1/cards/${cardId}/actions/comments?text=${encodeURIComponent(content)}`);
-    return ajax<TrelloAction>({ url, method: 'POST', crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err))
-    );
+    return ajax<TrelloAction>({ url, method: 'POST' }).pipe(catchError((err) => this.handleAPIError(err)));
   }
 
   /**
@@ -366,9 +364,7 @@ export class TrelloAPI {
     url = this.addQueryParam(url, 'desc', request.desc, true);
     url = this.addQueryParam(url, 'pos', request.pos);
     url = this.addQueryParam(url, 'idLabels', request.idLabels ? request.idLabels.join(',') : undefined);
-    return ajax<TrelloCard>({ url, method: 'POST', crossDomain: true }).pipe(
-      catchError((err) => this.handleAPIError(err))
-    );
+    return ajax<TrelloCard>({ url, method: 'POST' }).pipe(catchError((err) => this.handleAPIError(err)));
   }
 
   /**
@@ -411,7 +407,7 @@ export class TrelloAPI {
       url = this.addQueryParam(url, 'dueComplete', updatedCard.dueComplete.toString());
     }
 
-    return ajax<TrelloCard>({ url, method: 'PUT', crossDomain: true }).pipe(
+    return ajax<TrelloCard>({ url, method: 'PUT' }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response)
     );
@@ -435,7 +431,7 @@ export class TrelloAPI {
     url = this.addQueryParam(url, 'state', updatedCheckItem.state, true);
     url = this.addQueryParam(url, 'idChecklist', updatedCheckItem.idChecklist);
 
-    return ajax<TrelloCheckItem>({ url, method: 'PUT', crossDomain: true }).pipe(
+    return ajax<TrelloCheckItem>({ url, method: 'PUT' }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response)
     );
