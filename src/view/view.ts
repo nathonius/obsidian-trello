@@ -1,7 +1,5 @@
-import { ItemView, MarkdownRenderer, Notice, setIcon, WorkspaceLeaf } from 'obsidian';
-import { combineLatest, Subject } from 'rxjs';
-import { takeUntil, tap } from 'rxjs/operators';
 import { CUSTOM_ICONS, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from '../constants';
+import { ItemView, MarkdownRenderer, Notice, WorkspaceLeaf, setIcon } from 'obsidian';
 import {
   PluginError,
   PluginUISettings,
@@ -12,9 +10,12 @@ import {
   TrelloChecklist,
   TrelloList
 } from '../interfaces';
+import { Subject, combineLatest } from 'rxjs';
+import { takeUntil, tap } from 'rxjs/operators';
+
+import { Accordion } from '../accordion/accordion';
 import { TrelloPlugin } from '../plugin';
 import { TrelloViewManager } from './view-manager';
-import { Accordion } from '../accordion/accordion';
 
 export class TrelloView extends ItemView {
   private readonly destroy = new Subject<void>();
@@ -216,7 +217,7 @@ export class TrelloView extends ItemView {
     const cardLink = cardName.createEl('a', {
       attr: { href: card.url, 'aria-label': 'View on Trello' }
     });
-    setIcon(cardLink, 'navigate-glyph', 24);
+    setIcon(cardLink, 'navigate-glyph');
   }
 
   /**
