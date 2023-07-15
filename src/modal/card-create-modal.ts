@@ -1,9 +1,10 @@
 import { App, Modal, setIcon } from 'obsidian';
-import { Subject } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { Accordion } from '../accordion/accordion';
 import { CardPosition, PluginError, TrelloBoard, TrelloCard, TrelloLabel, TrelloList } from 'src/interfaces';
+
+import { Accordion } from '../accordion/accordion';
+import { Subject } from 'rxjs';
 import { TrelloPlugin } from '../plugin';
+import { map } from 'rxjs/operators';
 
 /**
  * Create a new card and update createdCard
@@ -137,7 +138,7 @@ export class CardCreateModal extends Modal {
         check.empty();
         delete this.selectedLabels[label.id];
       } else {
-        setIcon(check, 'checkbox-glyph', 20);
+        setIcon(check, 'checkbox-glyph');
         this.selectedLabels[label.id] = label;
       }
     });
