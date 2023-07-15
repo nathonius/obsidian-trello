@@ -22,7 +22,6 @@ export const TRELLO_VIEW_TYPE = 'trello-plugin';
 export const TRELLO_ERRORS = {
   noToken: 'The Trello plugin requires an API token for use. Please visit plugin settings.',
   rateLimit: 'The Trello API is rate limited. Please try again later.',
-  metaEdit: 'The Trello plugin requires the MetaEdit plugin.',
   unauthorized: 'The Trello API rejected your token. Please create a new token.',
   other: 'The Trello API could not be reached. Please create a new token or try again later.'
 };
@@ -63,6 +62,3 @@ export const NEW_TRELLO_CARD: TrelloCard = {
   name: 'Create a new card...',
   id: 'CREATE_NEW_TRELLO_CARD'
 } as TrelloCard;
-
-// Milliseconds to wait between meta updates
-export const METAEDIT_DEBOUNCE = 30;

@@ -47,14 +47,6 @@ export enum LeafSide {
 
 export type TrelloItemCache<T> = Record<string, { item: T; timestamp: Date }>;
 
-// 3rd Party
-export interface MetaEditApi {
-  createYamlProperty: (propertyName: string, propertyValue: string, file: TFile | string) => Promise<void>;
-  update: (propertyName: string, propertyValue: string, file: TFile | string) => Promise<void>;
-  getPropertyValue: (propertyName: string, file: TFile | string) => Promise<string | undefined>;
-  deleteProperty: (propertyName: string, file: TFile | null) => Promise<void>;
-}
-
 // Trello DTO
 export interface TrelloUser {
   id: string;
