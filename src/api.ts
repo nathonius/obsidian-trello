@@ -1,7 +1,5 @@
-import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
-import { ajax, AjaxError, AjaxResponse } from 'rxjs/ajax';
-import { map, takeUntil, tap, catchError } from 'rxjs/operators';
-import { TRELLO_API, TRELLO_API_KEY } from './constants';
+import { AjaxConfig, AjaxError, AjaxResponse } from 'rxjs/ajax';
+import { BehaviorSubject, Observable, from, of, throwError } from 'rxjs';
 import {
   CardPosition,
   NewCardRequest,
@@ -16,7 +14,25 @@ import {
   TrelloLabel,
   TrelloList
 } from './interfaces';
+import { RequestUrlResponse, requestUrl } from 'obsidian';
+import { TRELLO_API, TRELLO_API_KEY } from './constants';
+import { catchError, map, takeUntil, tap } from 'rxjs/operators';
+
 import { TrelloPlugin } from './plugin';
+
+function toAjaxResponse<T>(requestResponse: RequestUrlResponse): AjaxResponse<T> {
+  return {
+    status: requestResponse.status,
+    responseHeaders: requestResponse.headers,
+    response: requestResponse.json
+  } as AjaxResponse<T>;
+}
+
+function ajax<T>(config: AjaxConfig): Observable<AjaxResponse<T>> {
+  return from(requestUrl({ url: config.url, method: config.method ?? 'GET' })).pipe(
+    map((resp) => toAjaxResponse<T>(resp))
+  );
+}
 
 export class TrelloAPI {
   private readonly token = new BehaviorSubject<string>('');
