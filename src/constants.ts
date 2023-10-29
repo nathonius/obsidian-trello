@@ -43,7 +43,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   openToSide: LeafSide.Right,
   newCardPosition: CardPosition.Top,
   movedCardPosition: CardPosition.Top,
-  verboseLogging: false
+  verboseLogging: false,
+  prepopulateTitle: false
 };
 
 export const DEFAULT_DATA: PluginData = {

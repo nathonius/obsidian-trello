@@ -1,5 +1,13 @@
-import { App, Modal, setIcon } from 'obsidian';
-import { CardPosition, PluginError, TrelloBoard, TrelloCard, TrelloLabel, TrelloList } from 'src/interfaces';
+import { App, Modal, PluginSettingTab, setIcon, TFile } from 'obsidian';
+import {
+  CardPosition,
+  PluginError,
+  TrelloBoard,
+  TrelloCard,
+  TrelloLabel,
+  TrelloList,
+  PluginSettings
+} from 'src/interfaces';
 
 import { Accordion } from '../accordion/accordion';
 import { Subject } from 'rxjs';
@@ -87,9 +95,18 @@ export class CardCreateModal extends Modal {
   }
 
   private renderTitle(parent: HTMLElement): HTMLInputElement {
+    let cardTitle: string;
+    cardTitle = 'Enter a title for this card...';
+    if (this.plugin.state.prePopulateTitle.value === true) {
+      const file = this.app.workspace.getActiveFile();
+      if (file) {
+        cardTitle = file.name.replace(/\.[^/.]+$/, '');
+      }
+    }
+
     return parent.createEl('input', {
       cls: 'trello-card-create--title',
-      attr: { placeholder: 'Enter a title for this card...' }
+      attr: { placeholder: cardTitle }
     });
   }
 

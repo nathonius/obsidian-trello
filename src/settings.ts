@@ -26,6 +26,7 @@ export class TrelloSettings extends PluginSettingTab {
       this.buildNewCardPositionSetting(this.containerEl, settings);
       this.buildMovedCardPositionSetting(this.containerEl, settings);
       this.buildVerboseLoggingSetting(this.containerEl, settings);
+      this.prepopulateTitleConfigSetting(this.containerEl, settings);
     });
   }
 
@@ -57,6 +58,23 @@ export class TrelloSettings extends PluginSettingTab {
         button.setButtonText('Configure').onClick(() => {
           this.plugin.customizeUIModal.source.next(GLOBAL_UI);
           this.plugin.customizeUIModal.open();
+        });
+      });
+  }
+
+  private prepopulateTitleConfigSetting(containerEl: HTMLElement, settings: PluginSettings): void {
+    this.plugin.log(
+      'TrelloSettings.buildConfigSetting',
+      `-> Adding prepopulate title setting with initial value ${settings.prepopulateTitle}`
+    );
+    new Setting(containerEl)
+      .setName('Prepopulate Title')
+      .setDesc(
+        'Populate card title with the note title when creating a new card. Can be overridden when adding a card.'
+      )
+      .addToggle((toggle) => {
+        toggle.setValue(settings.prepopulateTitle).onChange((value) => {
+          this.plugin.state.updateSetting('prepopulateTitle', value);
         });
       });
   }

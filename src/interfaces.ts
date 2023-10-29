@@ -25,6 +25,7 @@ export interface PluginSettings {
   newCardPosition: CardPosition;
   movedCardPosition: CardPosition;
   verboseLogging: boolean;
+  prepopulateTitle: boolean;
 }
 
 export enum PluginError {
