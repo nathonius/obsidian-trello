@@ -60,6 +60,7 @@ export class TrelloPlugin extends Plugin {
     this.state.settings.pipe(takeUntil(this.destroy)).subscribe((settings) => {
       this.state.currentToken.next(settings.token);
       this.state.verboseLogging.next(settings.verboseLogging);
+      this.state.prePopulateTitle.next(settings.prepopulateTitle);
     });
 
     // Register trello view type
