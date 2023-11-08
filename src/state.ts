@@ -25,7 +25,7 @@ export class PluginState {
   readonly connectedCardId = new BehaviorSubject<string | null>(null);
   readonly currentToken = new BehaviorSubject<string>('');
   readonly verboseLogging = new BehaviorSubject<boolean>(false);
-  readonly prePopulateTitle = new BehaviorSubject<boolean>(false);
+  readonly prepopulateTitle = new BehaviorSubject<boolean>(false);
 
   constructor(private readonly plugin: TrelloPlugin, data: PluginData) {
     // Initialize data
