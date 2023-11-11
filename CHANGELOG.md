@@ -1,3 +1,9 @@
+# v2.1.0
+
+## Features
+
+- New setting to pre-populate the title of a new trello card with the note it's being attached to. Thanks @ChrisChinchilla!
+
 # v2.0.0
 
 ## BREAKING CHANGES
