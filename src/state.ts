@@ -1,5 +1,4 @@
-import { BehaviorSubject, map, Observable, takeUntil } from 'rxjs';
-import { DEFAULT_DATA } from './constants';
+import { BehaviorSubject, Observable, map, takeUntil } from 'rxjs';
 import {
   PluginConnectedCard,
   PluginData,
@@ -12,6 +11,8 @@ import {
   TrelloLabel,
   TrelloList
 } from './interfaces';
+
+import { DEFAULT_DATA } from './constants';
 import { TrelloPlugin } from './plugin';
 
 export class PluginState {
@@ -23,9 +24,6 @@ export class PluginState {
   readonly checklistCache: TrelloItemCache<TrelloChecklist> = {};
   readonly boardCardId = new BehaviorSubject<string | null>(null);
   readonly connectedCardId = new BehaviorSubject<string | null>(null);
-  readonly currentToken = new BehaviorSubject<string>('');
-  readonly verboseLogging = new BehaviorSubject<boolean>(false);
-  readonly prepopulateTitle = new BehaviorSubject<boolean>(false);
 
   constructor(private readonly plugin: TrelloPlugin, data: PluginData) {
     // Initialize data
@@ -98,5 +96,13 @@ export class PluginState {
    */
   updateVersion(): void {
     this.data.next({ ...this.data.value, version: DEFAULT_DATA.version });
+  }
+
+  /**
+   * Synchronously get the value of a setting.
+   * Only do this if you reeeeeally need to.
+   */
+  getSetting<K extends keyof PluginSettings>(key: K): PluginSettings[K] {
+    return this.data.value.settings[key];
   }
 }
