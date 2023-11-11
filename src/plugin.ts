@@ -12,7 +12,7 @@ import {
 import { LeafSide, PluginData, PluginError, TrelloBoard, TrelloCard } from './interfaces';
 import { Notice, Plugin, TFile, WorkspaceLeaf, addIcon } from 'obsidian';
 import { Observable, Subject, concat, forkJoin, iif, of } from 'rxjs';
-import { concatMap, map, take, takeUntil, tap } from 'rxjs/operators';
+import { concatMap, map, take, tap } from 'rxjs/operators';
 
 import { PluginState } from './state';
 import { TrelloAPI } from './api';
@@ -55,13 +55,6 @@ export class TrelloPlugin extends Plugin {
     if (savedData && savedData.version !== DEFAULT_DATA.version) {
       migrate(this, data);
     }
-
-    // Need some settings synchronously
-    this.state.settings.pipe(takeUntil(this.destroy)).subscribe((settings) => {
-      this.state.currentToken.next(settings.token);
-      this.state.verboseLogging.next(settings.verboseLogging);
-      this.state.prePopulateTitle.next(settings.prepopulateTitle);
-    });
 
     // Register trello view type
     this.registerView(TRELLO_VIEW_TYPE, (leaf: WorkspaceLeaf) => (this.view = new TrelloView(this, leaf)));
@@ -124,7 +117,7 @@ export class TrelloPlugin extends Plugin {
   }
 
   log(context: string, message: string, logLevel: LogLevel = LogLevel.Info): void {
-    if (this.state.verboseLogging.value) {
+    if (this.state.getSetting('verboseLogging')) {
       const log = `OBISIDAN-TRELLO: (${context}) ${message}`;
       switch (logLevel) {
         case LogLevel.Warn:

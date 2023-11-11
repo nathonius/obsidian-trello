@@ -1,9 +1,10 @@
 import { App, Modal, Notice } from 'obsidian';
-import { forkJoin } from 'rxjs';
 import { map, take } from 'rxjs/operators';
+
 import { TRELLO_ERRORS } from '../constants';
 import { TrelloBoard } from '../interfaces';
 import { TrelloPlugin } from '../plugin';
+import { forkJoin } from 'rxjs';
 
 export class BoardSelectModal extends Modal {
   private readonly selectedBoards = this.plugin.state.settings.pipe(
@@ -50,7 +51,8 @@ export class BoardSelectModal extends Modal {
       },
       error: () => {
         // Show a button to go to settings if no token is set.
-        if (!this.plugin.state.currentToken.value || this.plugin.state.currentToken.value === '') {
+        const token = this.plugin.state.getSetting('token');
+        if (!token) {
           const container = this.contentEl.createDiv({
             cls: 'trello-board-select--empty-state',
             text: 'An API token is required.'
