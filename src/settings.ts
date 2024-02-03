@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, Platform } from 'obsidian';
 import { CardPosition, LeafSide, PluginSettings } from './interfaces';
 import { GLOBAL_UI, TRELLO_TOKEN_URL } from './constants';
 
@@ -28,6 +28,7 @@ export class TrelloSettings extends PluginSettingTab {
       this.buildMovedCardPositionSetting(this.containerEl, settings);
       this.buildVerboseLoggingSetting(this.containerEl, settings);
       this.prepopulateTitleConfigSetting(this.containerEl, settings);
+      this.openInDesktopSetting(this.containerEl, settings);
     });
   }
 
@@ -61,6 +62,20 @@ export class TrelloSettings extends PluginSettingTab {
           this.plugin.customizeUIModal.open();
         });
       });
+  }
+
+  private openInDesktopSetting(containerEl: HTMLElement, settings: PluginSettings): void {
+    if (Platform.isMacOS || Platform.isWin) {
+      this.plugin.log('TrelloSettings.openInDesktopSetting', '-> Adding open in desktop config setting');
+      new Setting(containerEl)
+        .setName('Open in Trello desktop')
+        .setDesc('Opens Trello card in desktop application on macOS or Windows')
+        .addToggle((toggle) => {
+          toggle.setValue(settings.openInDesktop).onChange((value) => {
+            this.plugin.state.updateSetting('openInDesktop', value);
+          });
+        });
+    }
   }
 
   private prepopulateTitleConfigSetting(containerEl: HTMLElement, settings: PluginSettings): void {

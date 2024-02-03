@@ -214,10 +214,16 @@ export class TrelloView extends ItemView {
   private renderCardTitle(card: TrelloCard, parent: HTMLElement): void {
     this.plugin.log('TrelloView.renderCardTitle', '');
     const cardName = parent.createEl('h3', { text: card.name });
-    const cardLink = cardName.createEl('a', {
-      attr: { href: card.url, 'aria-label': 'View on Trello' }
+
+    let cardLink = String(card.url);
+    if (this.plugin.state.getSetting('openInDesktop') === true) {
+      cardLink = card.url.replace('https', 'trello');
+    }
+
+    const cardLinkEl = cardName.createEl('a', {
+      attr: { href: cardLink, 'aria-label': 'View on Trello' }
     });
-    setIcon(cardLink, 'navigate-glyph');
+    setIcon(cardLinkEl, 'navigate-glyph');
   }
 
   /**

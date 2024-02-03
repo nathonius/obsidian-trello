@@ -44,7 +44,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   newCardPosition: CardPosition.Top,
   movedCardPosition: CardPosition.Top,
   verboseLogging: false,
-  prepopulateTitle: false
+  prepopulateTitle: false,
+  openInDesktop: false
 };
 
 export const DEFAULT_DATA: PluginData = {
