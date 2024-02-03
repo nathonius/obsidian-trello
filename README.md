@@ -109,6 +109,6 @@ Pull requests are always welcome. Keep in mind that this plugin makes heavy use 
 
 ## Support
 
-Raise an issue here on GitHub if there's a problem. If you're unsure, feel free to contact me on the Obsidian discord, @OfficerHalf.
+Raise an issue here on GitHub if there's a problem. If you're unsure, feel free to contact me on the Obsidian discord, @nathan.smith.
 
 [tokenurl]: https://trello.com/1/authorize?expiration=never&scope=read,write&response_type=token&name=Obsidian%20Trello%20Token&key=9537467993aefd6dca9ee7788179c298
