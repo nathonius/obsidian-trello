@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "rollup --config rollup.config.js",
     "build": "rollup --config rollup.config.js --environment BUILD:production",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "lint": "eslint src/"
   },
   "keywords": [],
   "author": {
