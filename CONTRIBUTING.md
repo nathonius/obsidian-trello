@@ -27,8 +27,9 @@ Changes can be tested within your Obsidian repo. Copy the `main.js`, `styles.css
     4. `versions.json`
         - The matching Obsidian version should be bumped if needed.
     5. `src/constants.ts`, in the default settings value
-4. Once merged, run the production build with `npm run build`
-5. Create a new release with the following options:
-    1. Tag should be a new tag from the main branch, exactly in the format of the version, ex: `1.2.3`. Do not prefix the tag with `v`.
-    2. Description should be the value of the changelog for this release.
-    3. Add the `main.js`, `styles.css`, and `manifest.json` files to assets.
+4. Once merged, create and push a new tag using the following format:
+    - `git checkout main` 
+    - `git tag -a x.y.z -m "x.y.z"`
+    - `git push --tags`
+5. A release will automatically be drafted. Update the description with the changelog for this release.
+6. Publish the release.
