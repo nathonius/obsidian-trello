@@ -1,5 +1,5 @@
 import { CUSTOM_ICONS, TRELLO_ERRORS, TRELLO_VIEW_TYPE } from '../constants';
-import { ItemView, MarkdownRenderer, Notice, WorkspaceLeaf, setIcon } from 'obsidian';
+import { ItemView, MarkdownRenderer, Notice, WorkspaceLeaf, setIcon, Platform } from 'obsidian';
 import {
   PluginError,
   PluginUISettings,
@@ -215,14 +215,21 @@ export class TrelloView extends ItemView {
     this.plugin.log('TrelloView.renderCardTitle', '');
     const cardName = parent.createEl('h3', { text: card.name });
 
-    let cardLink = String(card.url);
+    let cardLink = card.url;
+    let cardLinkEl = HTMLAnchorElement.prototype;
+
     if (this.plugin.state.getSetting('openInDesktop') === true) {
       cardLink = card.url.replace('https', 'trello');
     }
-
-    const cardLinkEl = cardName.createEl('a', {
-      attr: { href: cardLink, 'aria-label': 'View on Trello' }
-    });
+    if (Platform.isMacOS || Platform.isWin) {
+      cardLinkEl = cardName.createEl('a', {
+        attr: { href: cardLink, 'aria-label': 'View in Trello Desktop' }
+      });
+    } else {
+      cardLinkEl = cardName.createEl('a', {
+        attr: { href: cardLink, 'aria-label': 'View on Trello' }
+      });
+    }
     setIcon(cardLinkEl, 'navigate-glyph');
   }
 
