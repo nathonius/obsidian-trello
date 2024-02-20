@@ -69,7 +69,7 @@ export class TrelloSettings extends PluginSettingTab {
       this.plugin.log('TrelloSettings.openInDesktopSetting', '-> Adding open in desktop config setting');
       new Setting(containerEl)
         .setName('Open in Trello desktop')
-        .setDesc('Opens Trello card in desktop application on macOS or Windows')
+        .setDesc('Opens cards in Trello desktop application on macOS or Windows')
         .addToggle((toggle) => {
           toggle.setValue(settings.openInDesktop).onChange((value) => {
             this.plugin.state.updateSetting('openInDesktop', value);
