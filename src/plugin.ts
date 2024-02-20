@@ -10,7 +10,7 @@ import {
   TRELLO_VIEW_TYPE
 } from './constants';
 import { LeafSide, PluginData, PluginError, TrelloBoard, TrelloCard } from './interfaces';
-import { Notice, Plugin, TFile, WorkspaceLeaf, addIcon } from 'obsidian';
+import { Notice, Plugin, TFile, WorkspaceLeaf, addIcon, Platform } from 'obsidian';
 import { Observable, Subject, concat, forkJoin, iif, of } from 'rxjs';
 import { concatMap, map, take, tap } from 'rxjs/operators';
 
@@ -40,6 +40,11 @@ export class TrelloPlugin extends Plugin {
     const data: PluginData = Object.assign({}, DEFAULT_DATA, savedData);
     data.settings = Object.assign({}, DEFAULT_SETTINGS, savedData?.settings);
     data.settings.customUi = Object.assign({}, DEFAULT_SETTINGS.customUi, savedData?.settings.customUi);
+
+    if (!Platform.isWin && !Platform.isMacOS) {
+      data.settings.openInDesktop = false;
+    }
+
     this.state = new PluginState(this, data);
 
     // Create new API instance
