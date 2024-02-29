@@ -1,3 +1,9 @@
+# v2.2.0
+
+## Features
+
+- New option to open trello links in the trello desktop apps. Thanks @ChrisChinchilla!
+
 # v2.1.0
 
 ## Features
