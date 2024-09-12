@@ -148,6 +148,10 @@ export class TrelloView extends ItemView {
       if (uiConfig.description && card.desc) {
         this.renderCardDesc(card, cardInfo);
       }
+
+      if (uiConfig.due) {
+        this.renderCardDue(card, cardInfo);
+      }
     }
 
     if (uiConfig?.labels && card.labels && card.labels.length > 0) {
@@ -257,6 +261,14 @@ export class TrelloView extends ItemView {
         setIcon(collapseIcon, 'up-chevron-glyph');
       }
     });
+  }
+
+  /**
+   * Renders the due date of the card
+   */
+  private renderCardDue(card: TrelloCard, parent: HTMLElement): void {
+    this.plugin.log('TrelloView.renderCardDue', '');
+    parent.createEl('h3', { text: card.due ? `Due: ${card.due}` : 'No due date' });
   }
 
   /**
