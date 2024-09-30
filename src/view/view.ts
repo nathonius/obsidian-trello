@@ -268,7 +268,19 @@ export class TrelloView extends ItemView {
    */
   private renderCardDue(card: TrelloCard, parent: HTMLElement): void {
     this.plugin.log('TrelloView.renderCardDue', '');
-    parent.createEl('h3', { text: card.due ? `Due: ${card.due}` : 'No due date' });
+    if (card.due) {
+      const dueDate = new Date(card.due);
+      parent.createEl('h3', {
+        text: `Due: ${dueDate.toLocaleDateString(undefined, {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })}`
+      });
+    } else {
+      parent.createEl('h3', { text: 'No due date' });
+    }
   }
 
   /**
