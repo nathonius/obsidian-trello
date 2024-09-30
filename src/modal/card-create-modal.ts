@@ -56,6 +56,7 @@ export class CardCreateModal extends Modal {
   }
 
   private onSave(): void {
+    console.log(this.due.value);
     this.plugin.api
       .addNewCard({
         idList: this.list.id,
@@ -123,6 +124,7 @@ export class CardCreateModal extends Modal {
 
   private renderDue(parent: HTMLElement): HTMLInputElement {
     const dueInput = parent.createEl('input', {
+      type: 'datetime-local',
       cls: 'trello-card-create--due',
       attr: { placeholder: 'Due date for this card...' }
     });
