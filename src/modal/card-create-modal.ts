@@ -22,6 +22,7 @@ export class CardCreateModal extends Modal {
   private selectedLabels: Record<string, TrelloLabel> = {};
   private title!: HTMLInputElement;
   private description!: HTMLTextAreaElement;
+  private due!: HTMLInputElement;
   private position!: HTMLSelectElement;
   private finishedCardCreation = false;
 
@@ -37,6 +38,7 @@ export class CardCreateModal extends Modal {
     const descriptionSection = accordion.addSection('Description');
     const labelsSection = accordion.addSection('Labels');
     this.description = this.renderDescription(descriptionSection.contentEl);
+    this.due = this.renderDue(container);
     this.renderLabels(labelsSection.contentEl);
     this.position = this.renderPositionSelect(container);
     const controls = container.createDiv('trello-card-create--controls');
@@ -54,12 +56,15 @@ export class CardCreateModal extends Modal {
   }
 
   private onSave(): void {
+    const dueDate = new Date(this.due.value).toISOString();
+
     this.plugin.api
       .addNewCard({
         idList: this.list.id,
         idLabels: Object.values(this.selectedLabels).map((label) => label.id),
         name: this.title.value,
         desc: this.description.value,
+        due: dueDate.toString(),
         pos: this.position.value as CardPosition
       })
       .pipe(map((resp) => resp.response))
@@ -83,6 +88,7 @@ export class CardCreateModal extends Modal {
     this.createdCard = new Subject<TrelloCard>();
     this.title.value = '';
     this.description.value = '';
+    this.due.value = '';
     this.finishedCardCreation = false;
   }
 
@@ -115,6 +121,16 @@ export class CardCreateModal extends Modal {
         placeholder: 'Add a more detailed description...'
       }
     });
+  }
+
+  private renderDue(parent: HTMLElement): HTMLInputElement {
+    const dueInput = parent.createEl('input', {
+      type: 'datetime-local',
+      cls: 'trello-card-create--due',
+      attr: { placeholder: 'Due date for this card...' }
+    });
+
+    return dueInput;
   }
 
   private renderLabels(parent: HTMLElement): void {

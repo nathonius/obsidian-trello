@@ -148,6 +148,10 @@ export class TrelloView extends ItemView {
       if (uiConfig.description && card.desc) {
         this.renderCardDesc(card, cardInfo);
       }
+
+      if (uiConfig.due) {
+        this.renderCardDue(card, cardInfo);
+      }
     }
 
     if (uiConfig?.labels && card.labels && card.labels.length > 0) {
@@ -257,6 +261,26 @@ export class TrelloView extends ItemView {
         setIcon(collapseIcon, 'up-chevron-glyph');
       }
     });
+  }
+
+  /**
+   * Renders the due date of the card
+   */
+  private renderCardDue(card: TrelloCard, parent: HTMLElement): void {
+    this.plugin.log('TrelloView.renderCardDue', '');
+    if (card.due) {
+      const dueDate = new Date(card.due);
+      parent.createEl('h3', {
+        text: `Due: ${dueDate.toLocaleDateString(undefined, {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })}`
+      });
+    } else {
+      parent.createEl('h3', { text: 'No due date' });
+    }
   }
 
   /**

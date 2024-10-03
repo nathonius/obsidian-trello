@@ -362,6 +362,7 @@ export class TrelloAPI {
     url = this.addQueryParam(url, 'idList', request.idList);
     url = this.addQueryParam(url, 'name', request.name, true);
     url = this.addQueryParam(url, 'desc', request.desc, true);
+    url = this.addQueryParam(url, 'due', request.due);
     url = this.addQueryParam(url, 'pos', request.pos);
     url = this.addQueryParam(url, 'idLabels', request.idLabels ? request.idLabels.join(',') : undefined);
     return ajax<TrelloCard>({ url, method: 'POST' }).pipe(catchError((err) => this.handleAPIError(err)));

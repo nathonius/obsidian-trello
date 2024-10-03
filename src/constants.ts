@@ -36,7 +36,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
       description: true,
       labels: true,
       list: true,
-      title: true
+      title: true,
+      due: true
     }
   },
   selectedBoards: [],

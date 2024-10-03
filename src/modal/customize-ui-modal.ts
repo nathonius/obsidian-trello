@@ -44,6 +44,9 @@ export class CustomizeUIModal extends Modal {
         new Setting(this.contentEl).setName('Description').addToggle((toggle) => {
           toggle.setValue(settings.description).onChange((value) => (this.newState.description = value));
         });
+        new Setting(this.contentEl).setName('Due').addToggle((toggle) => {
+          toggle.setValue(settings.due).onChange((value) => (this.newState.due = value));
+        });
         new Setting(this.contentEl).setName('List').addToggle((toggle) => {
           toggle.setValue(settings.list).onChange((value) => (this.newState.list = value));
         });

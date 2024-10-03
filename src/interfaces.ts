@@ -15,6 +15,7 @@ export interface PluginUISettings {
   labels: boolean;
   list: boolean;
   title: boolean;
+  due: boolean;
 }
 
 export interface PluginSettings {
@@ -161,6 +162,7 @@ export interface NewCardRequest {
   pos?: CardPosition;
   idList: string;
   idLabels?: string[];
+  due?: string;
 }
 
 export interface TrelloCheckItem {
