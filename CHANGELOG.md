@@ -1,3 +1,9 @@
+# v2.3.0
+
+## Features
+
+- New option to see and add card due dates. Thanks @ChrisChinchilla!
+
 # v2.2.0
 
 ## Features
