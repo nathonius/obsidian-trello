@@ -56,7 +56,10 @@ export class CardCreateModal extends Modal {
   }
 
   private onSave(): void {
-    const dueDate = new Date(this.due.value).toISOString();
+    let dueDate: string | undefined;
+    if (this.due.value) {
+      dueDate = new Date(this.due.value).toISOString().toString();
+    }
 
     this.plugin.api
       .addNewCard({
@@ -64,7 +67,7 @@ export class CardCreateModal extends Modal {
         idLabels: Object.values(this.selectedLabels).map((label) => label.id),
         name: this.title.value,
         desc: this.description.value,
-        due: dueDate.toString(),
+        due: dueDate,
         pos: this.position.value as CardPosition
       })
       .pipe(map((resp) => resp.response))
