@@ -1,3 +1,9 @@
+# v2.3.1
+
+## Fixes
+
+- Fixes bug that made due date required.
+
 # v2.3.0
 
 ## Features
