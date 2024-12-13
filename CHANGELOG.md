@@ -1,3 +1,10 @@
+# v2.3.2
+
+## Fixes
+
+- Fix mysterious build loss.
+- Update dependencies.
+
 # v2.3.1
 
 ## Fixes
