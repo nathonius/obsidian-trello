@@ -1,5 +1,6 @@
 import { BehaviorSubject, Observable, map, takeUntil } from 'rxjs';
 import {
+  CardRef,
   PluginConnectedCard,
   PluginData,
   PluginSettings,
@@ -22,10 +23,13 @@ export class PluginState {
   readonly listCache: TrelloItemCache<TrelloList> = {};
   readonly labelCache: TrelloItemCache<TrelloLabel[]> = {};
   readonly checklistCache: TrelloItemCache<TrelloChecklist> = {};
-  readonly boardCardId = new BehaviorSubject<string | null>(null);
+  readonly cardRefs = new BehaviorSubject<CardRef[]>([]);
   readonly connectedCardId = new BehaviorSubject<string | null>(null);
 
-  constructor(private readonly plugin: TrelloPlugin, data: PluginData) {
+  constructor(
+    private readonly plugin: TrelloPlugin,
+    data: PluginData
+  ) {
     // Initialize data
     this.data = new BehaviorSubject<PluginData>(data);
 

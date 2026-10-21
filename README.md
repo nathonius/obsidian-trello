@@ -30,9 +30,19 @@ The plugin does not poll or listen for updates from Trello, so changes made in T
 
 Do be mindful that Trello's REST API has strict rate limits. If you run into any rate limiting issues please contact me so I can work on a fix.
 
+#### Viewing Your Assigned Cards
+
+Use the **Show my Trello cards** command to open a separate view of every open Trello card assigned to you. Cards can be grouped by board or sorted by due date. This view fetches your cards, boards, and open lists when it opens and whenever you click refresh; it does not poll Trello in the background.
+
+#### Linking Multiple Cards
+
+Enable **Multiple cards per note (experimental)** to link more than one Trello card to a Markdown note. The first card remains in the `trello_board_card_id` frontmatter property for compatibility, while additional cards are stored as a list in `trello_cards`. Each value has the form `boardId;cardId`.
+
+Turning the setting off does not delete additional links; it hides them and makes newly linked cards replace the primary card. Re-enable the setting to show the additional links again. When several cards are visible, the disconnect command lets you unlink one card or all cards.
+
 #### Disconnecting Cards
 
-If want to remove the connection between a note and Trello card, click the 'Unlink card' button or use the [Disconnect Trello card command](#commands). Removing the `trello_plugin_note_id` and `trello_board_card_id` YAML frontmatter keys will also unlink the card, but prefer the button or command as they cleans up cached data as well.
+If you want to remove the connection between a note and a Trello card, click the 'Unlink card' button or use the [Disconnect Trello card command](#commands). Prefer the button or command because it also cleans up the plugin's saved connection data. For a complete manual unlink, remove `trello_plugin_note_id`, `trello_board_card_id`, and `trello_cards` from the YAML frontmatter.
 
 #### Moving cards between lists
 
@@ -77,15 +87,27 @@ Tokens can be revoked at any time in your Trello account settings.
 
 **Moved Card Position** - When moving a card from one list to another, should it be moved to the top or bottom of the selected list.
 
+**Follow Moved Cards** - Keep a note linked when its Trello card moves to another board. When the card is next loaded, the plugin updates the board ID stored in the note. Disable this to retain the previous board-scoped lookup behavior.
+
+**Multiple Cards Per Note (experimental)** - Allow a Markdown note to display more than one linked card. Additional links are stored in the `trello_cards` frontmatter property.
+
 **Verbose Logging** - Enable this if you're having trouble with the plugin. Logs will be enabled in the console. These can help me diagnose issues.
 
 ## Commands
 
 **Show Trello view** - Open the Trello pane, if it isn't already.
 
+**Show my Trello cards** - Open the view of all open Trello cards assigned to you.
+
 **Connect Trello card** - Connect a note to a (new) Trello card. Optionally, create a new Trello card.
 
 **Disconnect Trello card** - Remove the Trello connection from a note.
+
+## Security and Privacy
+
+The Trello token grants the plugin the read/write access requested on the authorization page. Obsidian stores it locally with the plugin settings, and the plugin sends it to Trello's HTTPS API as an authentication query parameter. Treat the token as a password: do not commit or share the plugin's `data.json`, screenshots of the token field, request URLs, or unredacted diagnostic logs. Revoke the token from your Trello account if it may have been exposed.
+
+Card names, descriptions, comments, labels, board names, and list names are loaded from Trello for display in Obsidian. The **My Trello cards** view additionally requests all open cards assigned to the authenticated Trello user, along with their boards and open lists.
 
 ## Theming
 

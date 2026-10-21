@@ -27,6 +27,9 @@ export interface PluginSettings {
   prepopulateTitle: boolean;
   prepopulateDescription: boolean;
   openInDesktop: boolean;
+  myCardsSort: MyCardsSort;
+  followMovedCards: boolean;
+  multipleCards: boolean;
 }
 
 export enum PluginError {
@@ -37,9 +40,20 @@ export enum PluginError {
   Abort = 'Abort'
 }
 
+/** A card linked to a note, parsed from frontmatter */
+export interface CardRef {
+  boardId: string;
+  cardId: string;
+}
+
 export interface PluginConnectedCard {
   boardId: string;
   cardId: string;
+}
+
+export enum MyCardsSort {
+  Board = 'board',
+  Due = 'due'
 }
 
 export enum LeafSide {
@@ -71,6 +85,10 @@ export interface TrelloBoard {
   url: string;
   shortLink: string;
   labelNames: Record<TrelloLabelColor, string>;
+}
+
+export interface TrelloBoardWithLists extends TrelloBoard {
+  lists: TrelloList[];
 }
 
 export interface TrelloList {

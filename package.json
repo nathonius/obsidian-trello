@@ -1,6 +1,6 @@
 {
   "name": "obsidian-trello",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "description": "Connect an existing or new Trello card to an Obsidian note. Once connected, see basic info, add and view comments, and check off checklist items.",
   "type": "module",
   "repository": {
@@ -20,10 +20,14 @@
     "url": "https://nathan-smith.org/"
   },
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-replace": "^6.0.3",
+    "@rollup/plugin-terser": "^1.0.0",
     "@rollup/plugin-typescript": "^11.1.6",
     "@types/node": "^25.0.3",
     "@typescript-eslint/eslint-plugin": "^8.51.0",
@@ -32,18 +36,17 @@
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.0.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.7",
-    "obsidian": "^1.11.0",
+    "lint-staged": "^16.4.0",
+    "obsidian": "^1.14.4",
     "prettier": "^3.7.4",
-    "rollup": "^4.54.0",
+    "rollup": "^4.64.3",
     "rollup-plugin-scss": "^4.0.1",
-    "@rollup/plugin-terser": "^0.4.4",
     "sass": "^1.97.1",
     "tslib": "^2.8.1",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "nanoid": "^5.1.6",
+    "nanoid": "^5.1.16",
     "rxjs": "^7.8.2"
   },
   "lint-staged": {
