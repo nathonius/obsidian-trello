@@ -407,6 +407,9 @@ export class TrelloAPI {
     if (updatedCard.dueComplete !== undefined) {
       url = this.addQueryParam(url, 'dueComplete', updatedCard.dueComplete.toString());
     }
+    // Any update to a card should unarchive it - otherwise the card silently
+    // stays archived and the update appears to have no effect.
+    url = this.addQueryParam(url, 'closed', 'false');
 
     return ajax<TrelloCard>({ url, method: 'PUT' }).pipe(
       catchError((err) => this.handleAPIError(err)),
