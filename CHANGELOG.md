@@ -1,4 +1,34 @@
+# Unreleased
+
+## Features
+
+- Add a **My Trello cards** view with board grouping and due-date sorting.
+- Add an experimental option to link multiple Trello cards to one Markdown note.
+- Add an option to keep notes linked when cards move between Trello boards.
+
+## Security
+
+- Validate card and board IDs read from note frontmatter before using them in Trello API paths.
+- Stop verbose settings logs from including the Trello token.
+- Update runtime and build dependencies to patched versions; `npm audit` reports no known vulnerabilities.
+
+## Fixes
+
+- Handle Obsidian being unable to provide the requested sidebar leaf.
+- Prevent slower note migrations from restoring stale cards after switching files.
+- Keep the primary frontmatter link and saved connection consistent when unlinking one of several cards.
+- Serialize moved-card frontmatter updates and report failed writes.
+- Stop retaining settings subscriptions for previously opened notes.
+- Only request comments, list details, and checklists when their UI sections are enabled.
+- Align the package lock and minimum Obsidian version with the 2.3.5 release metadata.
+
+## Notes
+
+- Additional card links use the `trello_cards` frontmatter property; the primary link remains in `trello_board_card_id` for compatibility.
+- The My Trello cards view refreshes on demand and does not poll Trello in the background.
+
 # v2.3.4
+
 ## Fixes
 
 - Update dependencies.
@@ -6,11 +36,13 @@
 - Fix build errors on release.
 
 # v2.3.3
+
 ## Fixes
 
 - Update dependencies.
 
 ## Features
+
 - New setting to pre-populate the description of a new trello card with the note it's being attached to. Thanks @ChrisChinchilla!
 
 # v2.3.2

@@ -33,11 +33,16 @@ export class TrelloSettings extends PluginSettingTab {
       this.prepopulateTitleConfigSetting(this.containerEl, settings);
       this.prepopulateDescriptionConfigSetting(this.containerEl, settings);
       this.openInDesktopSetting(this.containerEl, settings);
+      this.buildFollowMovedCardsSetting(this.containerEl, settings);
+      this.buildMultipleCardsSetting(this.containerEl, settings);
     });
   }
 
   private async buildTokenSetting(containerEl: HTMLElement, settings: PluginSettings): Promise<void> {
-    this.plugin.log('TrelloSettings.buildTokenSetting', `-> Adding token setting with initial value ${settings.token}`);
+    this.plugin.log(
+      'TrelloSettings.buildTokenSetting',
+      `-> Adding token setting; token is ${settings.token === '' ? 'not configured' : 'configured'}`
+    );
     const descFragment = new DocumentFragment();
     const desc = descFragment.createDiv({ cls: 'setting-item-description' });
     desc.innerHTML = `Your API token. <a href="${TRELLO_TOKEN_URL}">Generate one</a> then copy it here. This token can be revoked at any time in your Trello account settings.`;
@@ -80,6 +85,41 @@ export class TrelloSettings extends PluginSettingTab {
           });
         });
     }
+  }
+
+  private buildFollowMovedCardsSetting(containerEl: HTMLElement, settings: PluginSettings): void {
+    this.plugin.log(
+      'TrelloSettings.buildFollowMovedCardsSetting',
+      `-> Adding follow moved cards setting with initial value ${settings.followMovedCards}`
+    );
+    new Setting(containerEl)
+      .setName('Follow moved cards')
+      .setDesc(
+        'Keep notes linked when a card is moved to another board, and update the board stored in the note. If off, a moved card shows an error until it is linked again.'
+      )
+      .addToggle((toggle) => {
+        toggle.setValue(settings.followMovedCards).onChange((value) => {
+          this.plugin.state.updateSetting('followMovedCards', value);
+        });
+      });
+  }
+
+  private buildMultipleCardsSetting(containerEl: HTMLElement, settings: PluginSettings): void {
+    this.plugin.log(
+      'TrelloSettings.buildMultipleCardsSetting',
+      `-> Adding multiple cards setting with initial value ${settings.multipleCards}`
+    );
+    new Setting(containerEl)
+      .setName('Multiple cards per note (experimental)')
+      .setDesc(
+        'Link more than one card to a note. Extra cards are stored in the "trello_cards" property; the first card stays in "trello_board_card_id". If off, only the first card is shown and linking a card replaces it.'
+      )
+      .addToggle((toggle) => {
+        toggle.setValue(settings.multipleCards).onChange((value) => {
+          this.plugin.state.updateSetting('multipleCards', value);
+          this.plugin.reloadActiveFile();
+        });
+      });
   }
 
   private prepopulateTitleConfigSetting(containerEl: HTMLElement, settings: PluginSettings): void {

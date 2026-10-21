@@ -7,6 +7,7 @@ import {
   TrelloAction,
   TrelloActionType,
   TrelloBoard,
+  TrelloBoardWithLists,
   TrelloCard,
   TrelloCheckItem,
   TrelloCheckItemState,
@@ -63,21 +64,56 @@ export class TrelloAPI {
   }
 
   /**
+   * Get all boards for the current user, each with its open lists.
+   * This is not cached.
+   */
+  getBoardsWithLists(): Observable<TrelloBoardWithLists[]> {
+    this.plugin.log('TrelloAPI.getBoardsWithLists', '');
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
+    const url = this.auth(`${TRELLO_API}/1/members/me/boards?fields=name,url&lists=open`);
+    return ajax<TrelloBoardWithLists[]>({ url }).pipe(
+      catchError((err) => this.handleAPIError(err)),
+      map((resp) => resp.response)
+    );
+  }
+
+  /**
+   * Get all open cards the current user is a member of, across all boards.
+   * This is not cached.
+   */
+  getMyCards(): Observable<TrelloCard[]> {
+    this.plugin.log('TrelloAPI.getMyCards', '');
+    if (this.token.value === '') {
+      return throwError(() => PluginError.NoToken);
+    }
+    const fields = 'name,url,due,dueComplete,idBoard,idList,labels';
+    const url = this.auth(`${TRELLO_API}/1/members/me/cards?filter=open&fields=${fields}`);
+    return ajax<TrelloCard[]>({ url }).pipe(
+      catchError((err) => this.handleAPIError(err)),
+      map((resp) => resp.response)
+    );
+  }
+
+  /**
    * Get a specific card by board and card ID.
+   * If the follow moved cards setting is on, the board is not part of the request,
+   * so this keeps working after the card is moved to another board.
    * This uses the cache if possible.
    */
-  getCardFromBoard(
+  getCard(
     boardId: string,
     cardId: string,
     bypassCache = false,
     cacheExpireMs = 120000 // 2 minutes
   ): Observable<TrelloCard> {
-    this.plugin.log('TrelloAPI.getCardFromBoard', '');
+    this.plugin.log('TrelloAPI.getCard', '');
     const cached = this.plugin.state.cardCache[cardId];
     if (!cached || bypassCache || new Date().getTime() - cached.timestamp.getTime() > cacheExpireMs) {
-      return this._getCardFromBoard(boardId, cardId);
+      return this._getCard(boardId, cardId);
     }
-    this.plugin.log('TrelloAPI.getCardFromBoard', '-> Returning cached value.');
+    this.plugin.log('TrelloAPI.getCard', '-> Returning cached value.');
     return of(cached.item);
   }
 
@@ -85,11 +121,14 @@ export class TrelloAPI {
    * Get a specific card by board and card ID.
    * Always calls API and updates cache.
    */
-  private _getCardFromBoard(boardId: string, cardId: string): Observable<TrelloCard> {
+  private _getCard(boardId: string, cardId: string): Observable<TrelloCard> {
     if (this.token.value === '') {
       return throwError(() => PluginError.NoToken);
     }
-    const url = this.auth(`${TRELLO_API}/1/boards/${boardId}/cards/${cardId}`);
+    const path = this.plugin.state.getSetting('followMovedCards')
+      ? `/1/cards/${cardId}`
+      : `/1/boards/${boardId}/cards/${cardId}`;
+    const url = this.auth(`${TRELLO_API}${path}`);
     return ajax<TrelloCard>({ url }).pipe(
       catchError((err) => this.handleAPIError(err)),
       map((resp) => resp.response),

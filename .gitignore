@@ -19,3 +19,8 @@ data.json
 # secrets
 .env
 .DS_Store
+
+# local agent files and project knowledge bases (not committed)
+.claude/
+.agents/
+doc/maintenance.md
