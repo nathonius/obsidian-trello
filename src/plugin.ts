@@ -1,4 +1,11 @@
-import { BoardSuggestModal, CardCreateModal, CardSuggestModal, CustomizeUIModal, ListSuggestModal } from './modal';
+import {
+  BoardSuggestModal,
+  CardCreateModal,
+  CardSuggestModal,
+  CustomizeUIModal,
+  ListSuggestModal,
+  UnlinkSuggestModal
+} from './modal';
 import {
   CUSTOM_ICONS,
   DEFAULT_DATA,
@@ -7,18 +14,20 @@ import {
   MetaKey,
   NEW_TRELLO_CARD,
   TRELLO_ERRORS,
+  TRELLO_MY_CARDS_VIEW_TYPE,
   TRELLO_VIEW_TYPE
 } from './constants';
-import { LeafSide, PluginData, PluginError, TrelloBoard, TrelloCard } from './interfaces';
+import { CardRef, LeafSide, PluginData, PluginError, TrelloBoard, TrelloCard } from './interfaces';
 import { Notice, Plugin, TFile, WorkspaceLeaf, addIcon, Platform } from 'obsidian';
-import { Observable, Subject, concat, forkJoin, iif, of } from 'rxjs';
+import { Observable, Subject, concat, firstValueFrom, forkJoin, iif, of } from 'rxjs';
 import { concatMap, map, take, tap } from 'rxjs/operators';
 
 import { PluginState } from './state';
 import { TrelloAPI } from './api';
 import { TrelloSettings } from './settings';
+import { TrelloMyCardsView } from './view/my-cards-view';
 import { TrelloView } from './view/view';
-import { YamlHandler } from './yaml-handler';
+import { YamlHandler, formatCardRef } from './yaml-handler';
 import { migrate } from './migrations';
 import { nanoid } from 'nanoid';
 
@@ -33,6 +42,9 @@ export class TrelloPlugin extends Plugin {
   readonly cardSuggestModal = new CardSuggestModal(this.app);
   customizeUIModal!: CustomizeUIModal;
   readonly listSuggestModal = new ListSuggestModal(this.app);
+  readonly unlinkSuggestModal = new UnlinkSuggestModal(this.app);
+  private fileHandleSequence = 0;
+  private readonly cardBoardSyncs = new Map<string, Promise<void>>();
 
   async onload(): Promise<void> {
     // Set up data and default data.
@@ -63,6 +75,8 @@ export class TrelloPlugin extends Plugin {
 
     // Register trello view type
     this.registerView(TRELLO_VIEW_TYPE, (leaf: WorkspaceLeaf) => (this.view = new TrelloView(this, leaf)));
+
+    this.registerView(TRELLO_MY_CARDS_VIEW_TYPE, (leaf: WorkspaceLeaf) => new TrelloMyCardsView(this, leaf));
 
     // Register file handler to check if the opened card is trello connected\
     this.registerEvent(this.app.workspace.on('file-open', async (file) => this.handleFile(file)));
@@ -96,6 +110,15 @@ export class TrelloPlugin extends Plugin {
       icon: CUSTOM_ICONS.trello.id
     });
 
+    this.addCommand({
+      id: 'trello-plugin-reveal-my-cards',
+      name: 'Show my Trello cards',
+      callback: () => {
+        this.revealTrelloLeaf(true, TRELLO_MY_CARDS_VIEW_TYPE);
+      },
+      icon: CUSTOM_ICONS.trello.id
+    });
+
     // If this is the first run, add the trello pane.
     if (data.firstRun) {
       this.revealTrelloLeaf(true);
@@ -110,6 +133,7 @@ export class TrelloPlugin extends Plugin {
 
     // Remove trello leaf
     this.app.workspace.detachLeavesOfType(TRELLO_VIEW_TYPE);
+    this.app.workspace.detachLeavesOfType(TRELLO_MY_CARDS_VIEW_TYPE);
   }
 
   /**
@@ -143,34 +167,97 @@ export class TrelloPlugin extends Plugin {
    * Called on new file being opened. Informs the view of the current card.
    */
   private async handleFile(file: TFile | null): Promise<void> {
+    const sequence = ++this.fileHandleSequence;
     // See if we need to do anything
     if (!file) {
+      this.state.cardRefs.next([]);
+      this.state.connectedCardId.next(null);
       return;
     }
 
-    const boardCardId = await this.yamlHandler.getPropertyValue(MetaKey.BoardCard, file);
-    let trelloId = await this.yamlHandler.getPropertyValue(MetaKey.TrelloId, file);
+    const refs = this.yamlHandler.getCardRefs(file);
+    let trelloId = this.yamlHandler.getPropertyValue(MetaKey.TrelloId, file);
 
-    if (boardCardId && !trelloId) {
+    if (refs.length > 0 && !trelloId) {
       // Migrate to add new ID
       const newId = nanoid();
-      const [boardId, cardId] = boardCardId.split(';');
-      await this.yamlHandler.updateOrCreateMeta(MetaKey.TrelloId, newId, file);
-      this.state.updateConnectedCard(newId, { boardId, cardId });
+      await firstValueFrom(this.yamlHandler.updateOrCreateMeta(MetaKey.TrelloId, newId, file));
+      this.state.updateConnectedCard(newId, refs[0]);
       trelloId = newId;
     }
 
-    if (!boardCardId) {
+    // A slower frontmatter migration must not replace the state of a note
+    // that was opened while it was in progress.
+    if (sequence !== this.fileHandleSequence || this.app.workspace.getActiveFile()?.path !== file.path) {
+      return;
+    }
+
+    if (refs.length === 0) {
       this.log('TrelloPlugin.handleFile', 'File not trello connected');
-      this.state.boardCardId.next(null);
+      this.state.cardRefs.next([]);
       this.state.connectedCardId.next(null);
       return;
     }
 
     // This file is trello connected
-    this.log('TrelloPlugin.handleFile', `File trello connected, board/card ID ${boardCardId}, plugin ID ${trelloId}`);
-    this.state.boardCardId.next(boardCardId);
+    this.log('TrelloPlugin.handleFile', `File trello connected, ${refs.length} card(s), plugin ID ${trelloId}`);
     this.state.connectedCardId.next(trelloId as string);
+    this.state.cardRefs.next(refs);
+  }
+
+  /**
+   * Re-read the links of the active note, for when settings that affect them change.
+   */
+  reloadActiveFile(): void {
+    this.handleFile(this.app.workspace.getActiveFile());
+  }
+
+  /**
+   * If the card now lives on a different board than the active note records
+   * (the card was moved in Trello), update the note and saved connection.
+   */
+  syncCardBoard(card: TrelloCard): Promise<void> {
+    const file = this.app.workspace.getActiveFile();
+    if (!file) {
+      return Promise.resolve();
+    }
+    // Only touch a note that still points at this card, the user may have switched files.
+    const stored = this.yamlHandler.getCardRefs(file).find((ref) => ref.cardId === card.id);
+    if (!stored || stored.boardId === card.idBoard) {
+      return Promise.resolve();
+    }
+    this.log(
+      'TrelloPlugin.syncCardBoard',
+      `Card moved from board ${stored.boardId} to ${card.idBoard}, updating note.`
+    );
+    const previous = this.cardBoardSyncs.get(file.path) ?? Promise.resolve();
+    const operation = previous
+      .catch(() => undefined)
+      .then(async () => {
+        const { changed, primary } = await this.yamlHandler.replaceCardRef(
+          { boardId: card.idBoard, cardId: card.id },
+          file
+        );
+        if (!changed) {
+          return;
+        }
+        const trelloId = this.yamlHandler.getPropertyValue(MetaKey.TrelloId, file);
+        if (trelloId && primary) {
+          this.state.updateConnectedCard(trelloId, primary);
+        }
+      });
+    this.cardBoardSyncs.set(file.path, operation);
+    return operation
+      .catch((err) => {
+        this.log('TrelloPlugin.syncCardBoard', `Could not update note: ${String(err)}`, LogLevel.Error);
+        new Notice(TRELLO_ERRORS.movedCardSave);
+        throw err;
+      })
+      .finally(() => {
+        if (this.cardBoardSyncs.get(file.path) === operation) {
+          this.cardBoardSyncs.delete(file.path);
+        }
+      });
   }
 
   /**
@@ -181,6 +268,12 @@ export class TrelloPlugin extends Plugin {
     const file = this.app.workspace.getActiveFile();
     if (!file) {
       this.log('TrelloPlugin.connectTrelloCard', 'No file available to connect trello card.', LogLevel.Warn);
+      return;
+    }
+    // The link is stored in frontmatter, which only exists in Markdown files
+    if (file.extension !== 'md') {
+      this.log('TrelloPlugin.connectTrelloCard', `Unsupported file type ${file.extension}.`, LogLevel.Warn);
+      new Notice(TRELLO_ERRORS.unsupportedFile);
       return;
     }
 
@@ -236,22 +329,34 @@ export class TrelloPlugin extends Plugin {
         ),
         map(({ selectedCard, existingId }: { selectedCard: TrelloCard; existingId: string | undefined }) => {
           const trelloId = existingId ? existingId : nanoid();
-          this.log('TrelloPlugin.connectTrelloCard', `-> Updating file with plugin ID ${trelloId}`);
-          this.state.updateConnectedCard(trelloId, { cardId: selectedCard.id, boardId: selectedCard.idBoard });
-          this.state.connectedCardId.next(trelloId);
-          const boardCardId = `${selectedCard.idBoard};${selectedCard.id}`;
+          const newRef: CardRef = { cardId: selectedCard.id, boardId: selectedCard.idBoard };
+          // Without the multiple cards setting a new card always replaces the old one
+          const existingRefs = this.state.getSetting('multipleCards') ? this.yamlHandler.getCardRefs(file) : [];
+          if (existingRefs.some((ref) => ref.cardId === newRef.cardId)) {
+            new Notice(TRELLO_ERRORS.duplicateCard);
+            throw PluginError.Abort;
+          }
+          const boardCardId = formatCardRef(newRef);
           this.log('TrelloPlugin.connectTrelloCard', `-> Updating file with board/card ID ${boardCardId}`);
-          this.state.boardCardId.next(boardCardId);
-          return { boardCardId, trelloId };
+          // The first card goes in the original property, which keeps working with the setting off
+          const addToList = existingRefs.length > 0;
+          this.log('TrelloPlugin.connectTrelloCard', `-> Updating file with plugin ID ${trelloId}`);
+          this.state.updateConnectedCard(trelloId, addToList ? existingRefs[0] : newRef);
+          this.state.connectedCardId.next(trelloId);
+          this.state.cardRefs.next(addToList ? [...existingRefs, newRef] : [newRef]);
+          return { boardCardId, trelloId, newRef, addToList };
         }),
-        concatMap(({ boardCardId, trelloId }: { boardCardId: string; trelloId: string }) =>
+        concatMap(({ boardCardId, trelloId, newRef, addToList }) =>
           concat(
             this.yamlHandler.updateOrCreateMeta(MetaKey.TrelloId, trelloId, file).pipe(
               tap(() => {
                 this.log('TrelloPlugin.connectTrelloCard', '-> Adding plugin ID meta key.');
               })
             ),
-            this.yamlHandler.updateOrCreateMeta(MetaKey.BoardCard, boardCardId, file).pipe(
+            (addToList
+              ? this.yamlHandler.addCardRef(newRef, file)
+              : this.yamlHandler.updateOrCreateMeta(MetaKey.BoardCard, boardCardId, file)
+            ).pipe(
               tap(() => {
                 this.log('TrelloPlugin.connectTrelloCard', '-> Adding board/card ID meta key.');
               })
@@ -294,8 +399,32 @@ export class TrelloPlugin extends Plugin {
       this.log('TrelloPlugin.disconnectTrelloCard', 'No file available to connect trello card.', LogLevel.Warn);
       return;
     }
+    if (file.extension !== 'md') {
+      this.log('TrelloPlugin.disconnectTrelloCard', `Unsupported file type ${file.extension}.`, LogLevel.Warn);
+      new Notice(TRELLO_ERRORS.unsupportedFile);
+      return;
+    }
 
     this.log('TrelloPlugin.disconnectTrelloCard', 'Disconnecting trello connected card.');
+
+    // With several cards, let the user choose which one to unlink
+    const refs = this.yamlHandler.getCardRefs(file);
+    if (refs.length > 1) {
+      const cardId = await this.selectCardToUnlink(refs);
+      if (cardId === undefined) {
+        return;
+      }
+      if (cardId !== null) {
+        const remainingRefs = await this.yamlHandler.removeCardRef(cardId, file);
+        const existingPluginId = this.yamlHandler.getPropertyValue(MetaKey.TrelloId, file);
+        if (existingPluginId && remainingRefs.length > 0) {
+          this.state.updateConnectedCard(existingPluginId, remainingRefs[0]);
+        }
+        this.state.cardRefs.next(remainingRefs);
+        this.log('TrelloPlugin.disconnectTrelloCard', `-> Removed card ${cardId}.`);
+        return;
+      }
+    }
 
     const existingPluginId = this.yamlHandler.getPropertyValue(MetaKey.TrelloId, file);
     if (existingPluginId) {
@@ -306,8 +435,31 @@ export class TrelloPlugin extends Plugin {
     }
 
     await this.yamlHandler.deleteProperty(MetaKey.BoardCard, file);
-    this.state.boardCardId.next(null);
+    await this.yamlHandler.deleteProperty(MetaKey.Cards, file);
+    this.state.cardRefs.next([]);
     this.log('TrelloPlugin.disconnectTrelloCard', '-> Removed board/card ID.');
+  }
+
+  /**
+   * Asks which linked card to unlink.
+   * Resolves to the card ID, null for all cards or undefined if the user cancelled.
+   */
+  private async selectCardToUnlink(refs: CardRef[]): Promise<string | null | undefined> {
+    const options = refs.map((ref) => ({
+      label: this.state.cardCache[ref.cardId]?.item.name ?? `Card ${ref.cardId}`,
+      cardId: ref.cardId as string | null
+    }));
+    options.push({ label: 'All cards', cardId: null });
+    this.unlinkSuggestModal.options = options;
+    this.unlinkSuggestModal.open();
+    try {
+      return (await firstValueFrom(this.unlinkSuggestModal.selected)).cardId;
+    } catch (err) {
+      if (err === PluginError.Abort) {
+        return undefined;
+      }
+      throw err;
+    }
   }
 
   private selectBoard(boards: TrelloBoard[]): Observable<TrelloBoard> {
@@ -356,10 +508,11 @@ export class TrelloPlugin extends Plugin {
   /**
    * Adds the trello leaf if not already available
    * @param activate if true, reveal the leaf, if false it will only be added
+   * @param viewType which of the plugin's views to add
    */
-  private revealTrelloLeaf(activate = false): void {
+  private revealTrelloLeaf(activate = false, viewType = TRELLO_VIEW_TYPE): void {
     this.log('TrelloPlugin.revealTrelloLeaf', 'Revealing trello leaf.');
-    const leaves = this.app.workspace.getLeavesOfType(TRELLO_VIEW_TYPE);
+    const leaves = this.app.workspace.getLeavesOfType(viewType);
 
     if (leaves.length === 0) {
       this.log('TrelloPlugin.revealTrelloLeaf', '-> No trello leaf found, creating.');
@@ -372,7 +525,11 @@ export class TrelloPlugin extends Plugin {
           this.log('TrelloPlugin.revealTrelloLeaf', `-> Creating leaf on ${side} side.`);
           const leaf =
             side === LeafSide.Right ? this.app.workspace.getRightLeaf(false) : this.app.workspace.getLeftLeaf(false);
-          leaf.setViewState({ type: TRELLO_VIEW_TYPE });
+          if (!leaf) {
+            this.log('TrelloPlugin.revealTrelloLeaf', `-> Could not create a leaf on the ${side} side.`, LogLevel.Warn);
+            return;
+          }
+          leaf.setViewState({ type: viewType });
           if (activate) {
             this.log('TrelloPlugin.revealTrelloLeaf', '-> Leaf created, revealing.');
             this.app.workspace.revealLeaf(leaf);

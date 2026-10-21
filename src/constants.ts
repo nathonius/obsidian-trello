@@ -1,4 +1,4 @@
-import { CardPosition, LeafSide, PluginData, PluginSettings, TrelloCard } from './interfaces';
+import { CardPosition, LeafSide, MyCardsSort, PluginData, PluginSettings, TrelloCard } from './interfaces';
 
 export enum LogLevel {
   Info,
@@ -19,11 +19,15 @@ export const TRELLO_TOKEN_URL =
 export const TRELLO_API = 'https://api.trello.com';
 export const TRELLO_API_KEY = '9537467993aefd6dca9ee7788179c298';
 export const TRELLO_VIEW_TYPE = 'trello-plugin';
+export const TRELLO_MY_CARDS_VIEW_TYPE = 'trello-plugin-my-cards';
 export const TRELLO_ERRORS = {
   noToken: 'The Trello plugin requires an API token for use. Please visit plugin settings.',
   rateLimit: 'The Trello API is rate limited. Please try again later.',
   unauthorized: 'The Trello API rejected your token. Please create a new token.',
-  other: 'The Trello API could not be reached. Please create a new token or try again later.'
+  other: 'The Trello API could not be reached. Please create a new token or try again later.',
+  duplicateCard: 'This card is already linked to this note.',
+  unsupportedFile: 'Trello cards can only be linked to Markdown notes. Canvas files are not supported yet.',
+  movedCardSave: 'The card moved, but its new board could not be saved to this note.'
 };
 
 export const GLOBAL_UI = 'global';
@@ -47,18 +51,22 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   verboseLogging: false,
   prepopulateTitle: false,
   prepopulateDescription: false,
-  openInDesktop: false
+  openInDesktop: false,
+  myCardsSort: MyCardsSort.Board,
+  followMovedCards: true,
+  multipleCards: false
 };
 
 export const DEFAULT_DATA: PluginData = {
   settings: DEFAULT_SETTINGS,
-  version: '2.3.4',
+  version: '2.3.5',
   firstRun: true,
   connectedCards: {}
 };
 
 export enum MetaKey {
   BoardCard = 'trello_board_card_id',
+  Cards = 'trello_cards',
   TrelloId = 'trello_plugin_note_id'
 }
 

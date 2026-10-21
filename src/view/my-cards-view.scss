@@ -1,0 +1,52 @@
+.workspace-leaf-content[data-type='trello-plugin-my-cards'] {
+  .view-content {
+    padding: 0;
+  }
+}
+
+.trello-my-cards {
+  &--container {
+    padding: 0 8px;
+  }
+  &--message {
+    margin: 8px 0;
+    color: var(--text-muted);
+  }
+  &--sort {
+    font-size: var(--font-ui-smaller);
+  }
+  &--board {
+    margin-bottom: 12px;
+    h4 {
+      margin: 8px 0 4px;
+    }
+  }
+  &--card {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+    &-title {
+      display: block;
+    }
+    &-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-faint);
+      .trello-label {
+        height: 8px;
+        width: 24px;
+        border-radius: 4px;
+      }
+    }
+    &-due {
+      &.is-overdue {
+        color: var(--text-error);
+      }
+      &.is-complete {
+        text-decoration: line-through;
+      }
+    }
+  }
+}

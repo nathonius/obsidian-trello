@@ -10,39 +10,53 @@ import {
   TrelloChecklist,
   TrelloList
 } from '../interfaces';
-import { Subject, combineLatest } from 'rxjs';
-import { takeUntil, tap } from 'rxjs/operators';
+import { Subject, combineLatest, of } from 'rxjs';
+import { auditTime, map, switchMap, takeUntil, tap } from 'rxjs/operators';
 
 import { Accordion } from '../accordion/accordion';
+import { CardModel } from './card-model';
 import { TrelloPlugin } from '../plugin';
 import { TrelloViewManager } from './view-manager';
 
 export class TrelloView extends ItemView {
   private readonly destroy = new Subject<void>();
   private readonly update = new Subject<void>();
+  // Cards the user collapsed, so re-rendering does not reopen them
+  private readonly collapsedCards = new Set<string>();
   private readonly viewManager = new TrelloViewManager(this.plugin, this.destroy, this.update);
 
-  constructor(private readonly plugin: TrelloPlugin, leaf: WorkspaceLeaf) {
+  constructor(
+    private readonly plugin: TrelloPlugin,
+    leaf: WorkspaceLeaf
+  ) {
     super(leaf);
 
     // Re-render whenever state changes
     combineLatest([
-      this.viewManager.currentCard,
-      this.viewManager.currentActions,
-      this.viewManager.currentList,
-      this.viewManager.currentChecklists,
+      this.viewManager.cards.pipe(
+        switchMap((models) =>
+          (models.length > 0 ? combineLatest(models.map((m) => m.state)) : of([])).pipe(map(() => models))
+        )
+      ),
       this.viewManager.currentUIConfig
     ])
-      .pipe(takeUntil(this.destroy))
-      .subscribe(([card, actions, list, checklists, uiConfig]) => {
+      .pipe(auditTime(30), takeUntil(this.destroy))
+      .subscribe(([models, uiConfig]) => {
         this.contentEl.empty();
-        const errors = [this.viewManager.cardError, this.viewManager.actionsError, this.viewManager.listError];
-        if (errors.some((err) => err !== null)) {
-          this.renderEmptyView(this.getWorstError(errors));
-        } else if (card === null) {
+        if (models.length === 0) {
           this.renderEmptyView(null);
+          return;
+        }
+        const modelErrors = models.map((m) => [m.cardError, m.actionsError, m.listError]);
+        const allErrors = modelErrors.flat();
+        // With several cards, one failing card should not hide the others
+        const failedModels = modelErrors.filter((errors) => errors.some((err) => err !== null)).length;
+        if (allErrors.some((err) => err !== null) && (models.length === 1 || failedModels === models.length)) {
+          this.renderEmptyView(this.getWorstError(allErrors));
+        } else if (models.every((m) => m.currentCard.value === null && m.cardError === null)) {
+          this.renderPaneContainer().createDiv({ text: 'Loading card...' });
         } else {
-          this.renderConnectedView(card, actions, list, checklists, uiConfig);
+          this.renderConnectedView(models, uiConfig);
         }
       });
   }
@@ -123,22 +137,60 @@ export class TrelloView extends ItemView {
   /**
    * After getting all data, render it into a usable form.
    */
-  private renderConnectedView(
-    card: TrelloCard,
-    actions: TrelloAction[] | null,
-    list: TrelloList | null,
-    checklists: TrelloChecklist[] | null,
-    uiConfig: PluginUISettings | null
-  ): void {
+  private renderConnectedView(models: CardModel[], uiConfig: PluginUISettings | null): void {
     this.plugin.log('TrelloView.renderConnectedView', '');
     this.renderHeader(this.contentEl);
     const pane = this.renderPaneContainer();
+
+    if (models.length === 1) {
+      this.renderCard(models[0], pane, uiConfig);
+      return;
+    }
+    models.forEach((model) => this.renderCardSection(model, pane, uiConfig));
+  }
+
+  /**
+   * Renders one card of several as a collapsible section.
+   */
+  private renderCardSection(model: CardModel, parent: HTMLElement, uiConfig: PluginUISettings | null): void {
+    const card = model.currentCard.value;
+    const section = parent.createEl('details', { cls: 'trello-pane--card-section' });
+    section.open = !this.collapsedCards.has(model.key);
+    section.addEventListener('toggle', () => {
+      if (section.open) {
+        this.collapsedCards.delete(model.key);
+      } else {
+        this.collapsedCards.add(model.key);
+      }
+    });
+    section.createEl('summary', { text: card?.name ?? 'Trello card', cls: 'trello-pane--card-section-title' });
+    const body = section.createDiv('trello-pane--card-section-body');
+    if (card === null) {
+      body.createDiv({ text: model.cardError === null ? 'Loading card...' : TRELLO_ERRORS.other });
+    } else if (model.actionsError !== null || model.listError !== null) {
+      body.createDiv({ text: TRELLO_ERRORS.other });
+    } else {
+      this.renderCard(model, body, uiConfig);
+    }
+  }
+
+  /**
+   * Renders everything for a single card into the given container.
+   */
+  private renderCard(model: CardModel, pane: HTMLElement, uiConfig: PluginUISettings | null): void {
+    const card = model.currentCard.value;
+    if (card === null) {
+      return;
+    }
+    const actions = model.currentActions.value;
+    const list = model.currentList.value;
+    const checklists = model.currentChecklists.value;
 
     if (uiConfig?.list || uiConfig?.title || uiConfig?.description) {
       const cardInfo = pane.createDiv('trello-pane--card-info');
 
       if (uiConfig?.list && list) {
-        this.renderCardList(list, cardInfo);
+        this.renderCardList(model, list, cardInfo);
       }
 
       if (uiConfig.title) {
@@ -161,7 +213,7 @@ export class TrelloView extends ItemView {
 
     if (uiConfig?.comments) {
       const commentSectionContainer = pane.createDiv('trello-pane--comment-section');
-      this.renderCommentSection(card, actions, commentSectionContainer);
+      this.renderCommentSection(model, card, actions, commentSectionContainer);
     }
 
     if (uiConfig?.checklists && checklists && checklists.length > 0) {
@@ -195,7 +247,7 @@ export class TrelloView extends ItemView {
   /**
    * Renders the name of the list which can be used to move the card to another list
    */
-  private renderCardList(list: TrelloList, parent: HTMLElement): void {
+  private renderCardList(model: CardModel, list: TrelloList, parent: HTMLElement): void {
     this.plugin.log('TrelloView.renderCardList', '');
     const listName = parent.createEl('a', {
       cls: 'trello-pane--card-info--list',
@@ -208,7 +260,7 @@ export class TrelloView extends ItemView {
     const listIcon = listName.createSpan();
     setIcon(listIcon, 'right-arrow-with-tail');
     listName.addEventListener('click', () => {
-      this.viewManager.moveCard();
+      model.moveCard();
     });
   }
 
@@ -304,7 +356,12 @@ export class TrelloView extends ItemView {
   /**
    * Renders the comment section and input to add new comments.
    */
-  private renderCommentSection(card: TrelloCard, comments: TrelloAction[] | null, parent: HTMLElement): void {
+  private renderCommentSection(
+    model: CardModel,
+    card: TrelloCard,
+    comments: TrelloAction[] | null,
+    parent: HTMLElement
+  ): void {
     this.plugin.log('TrelloView.renderCommentSection', '');
     const container = parent.createDiv('trello-comment-input--container');
 
@@ -335,7 +392,7 @@ export class TrelloView extends ItemView {
             })
           )
           .subscribe(() => {
-            this.update.next();
+            model.refresh();
             new Notice('Added comment.');
           });
       }

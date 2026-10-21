@@ -206,3 +206,16 @@
     margin-top: 8px;
   }
 }
+
+.trello-pane--card-section {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 4px 0;
+  &-title {
+    cursor: pointer;
+    font-weight: var(--font-semibold);
+  }
+  &-body {
+    display: flex;
+    flex-direction: column;
+  }
+}
